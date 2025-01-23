@@ -1,0 +1,11 @@
+[package]
+name = "lunatech"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = "4.5.27"
+colored = "3.0.0"
+cpal = { version = "0.15.3", features = ["jack"] }
+gag = "1.0.0"
+rustfft = "6.2.0"
