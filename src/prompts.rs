@@ -35,9 +35,16 @@ pub fn select_device_by_prompt(host: &cpal::Host) -> cpal::Device{
         .collect::<Vec<cpal::Device>>()
     };
     
-    let device_indices = (0..devices.len()).map(|x| x.to_string()).collect::<Vec<String>>();    
-    for (i, x) in devices.iter().enumerate() {
-        println!("{} {}", i.to_string().green().bold(), x.name().unwrap());
+    let device_indices = (0..devices.len()).map(|index| index.to_string()).collect::<Vec<String>>();    
+    for (index, device) in devices.iter().enumerate() {
+        match device.name() {
+            Ok(name) => {
+                println!("{} {}", index.to_string().green().bold(), name);
+            },
+            Err(_) => {
+                println!("{} Unknown Device", index.to_string().green().bold());
+            }
+        }
     }
 
     println!();
