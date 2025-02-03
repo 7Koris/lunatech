@@ -7,7 +7,7 @@ pub mod monitor;
 pub mod analyzer;
 
 const DEFAULT_SAMPLE_RATE: u32 = 44100;
-const DEFAULT_BUFFER_SIZE: u32 = 256; 
+const DEFAULT_BUFFER_SIZE: u32 = 256 * 4;
 
 fn main() {
     let matches = clap::Command::new("lunatech")
@@ -31,11 +31,12 @@ fn main() {
                 .value_parser(value_parser!(u32))
         )
         .get_matches();
+
     let sample_rate = matches.get_one::<u32>("sample_rate").unwrap_or(&DEFAULT_SAMPLE_RATE);
     let buffer_size = matches.get_one::<u32>("buffer_size").unwrap_or(&DEFAULT_BUFFER_SIZE);
     
     let host = cpal::default_host();
     let device = prompts::select_device_by_prompt(&host);
     let device_monitor = monitor::DeviceMonitor::new(&device, *sample_rate, *buffer_size);
-    device_monitor.monitor_device();
+    device_monitor.monitor_device(); // blocking, TODO: exit condition?
 }

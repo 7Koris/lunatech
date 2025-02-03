@@ -1,7 +1,8 @@
 use std::thread;
-
 use colored::{ColoredString, Colorize};
 use cpal::{traits::{DeviceTrait, StreamTrait}, BuildStreamError, SampleRate, StreamConfig};
+
+use crate::analyzer::Analyzer;
 
 pub struct DeviceMonitor {
     device_name: ColoredString,
@@ -41,8 +42,11 @@ impl DeviceMonitor {
     }
 
     fn try_building_stream(device: &cpal::Device, config: &StreamConfig) -> Result<cpal::Stream, BuildStreamError>  {
-        let data_callback = move |data: &[f32], _: &cpal::InputCallbackInfo| {   
-            println!("{:?}", data);
+        let mut analyzer = Analyzer::new(config.channels, config.sample_rate.0);
+
+        // TODO: Send analyzer data over network
+        let data_callback = move |sample_data: &[f32], _: &cpal::InputCallbackInfo| {   
+            analyzer.feed_data(sample_data);
         };
     
         let error_callback = move |e: cpal::StreamError| {
@@ -54,18 +58,28 @@ impl DeviceMonitor {
 
     fn get_built_stream(device: &cpal::Device, sample_rate: u32, buffer_size: u32) -> cpal::Stream {
         let config = &StreamConfig {
-            channels: 1_u16, // device.default_output_config().unwrap().channels(), TODO: ???
+            channels: 
+                match  device.default_input_config() {
+                    Ok(config) => {
+                        println!("Using default config {}", config.channels().to_string().bold().green());
+                        config.channels()
+                    },
+                    Err(e) => {
+                        println!("{}", e.to_string().bold().red());
+                        panic!();
+                    }
+                },
             sample_rate: SampleRate(sample_rate), 
             buffer_size: cpal::BufferSize::Fixed(buffer_size),
         };
 
         let stream =  Self::try_building_stream(device, config);
 
-       let stream = if stream.is_ok() {
+        let stream = if stream.is_ok() {
             stream
         } else {
             println!("{}", stream.err().unwrap().to_string().bold().red());
-            println!("{}", "Attempting to use backup config".bold().yellow());
+            println!("{}", "Main config failed, attempting to use backup config".bold().yellow());
 
             let config = device.default_input_config();
             let config = match config {
