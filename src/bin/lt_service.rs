@@ -2,9 +2,8 @@ extern crate cpal;
 
 use clap::{value_parser, ArgAction};
 
-pub mod prompts;
-pub mod monitor;
-pub mod analyzer;
+use lunatech::prompts;
+use lunatech::device_monitor;
 
 const DEFAULT_SAMPLE_RATE: u32 = 44100;
 const DEFAULT_BUFFER_SIZE: u32 = 256 * 4;
@@ -37,6 +36,6 @@ fn main() {
     
     let host = cpal::default_host();
     let device = prompts::select_device_by_prompt(&host);
-    let device_monitor = monitor::DeviceMonitor::new(&device, *sample_rate, *buffer_size);
+    let device_monitor = device_monitor::DeviceMonitor::new(&device, *sample_rate, *buffer_size);
     device_monitor.monitor_device(); // blocking, TODO: exit condition?
 }

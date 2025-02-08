@@ -2,9 +2,10 @@ use cpal::traits::{DeviceTrait, HostTrait};
 use colored::Colorize;
 use gag::Gag;
 
+/// Repeatedly attempts to capture valid user input
 fn prompt_user_input(patterns: &[String], prompt: String) -> String {
     loop {
-        println!("{}", prompt); 
+        println!("{prompt}"); 
         let mut input = String::new();
 
 
@@ -14,8 +15,8 @@ fn prompt_user_input(patterns: &[String], prompt: String) -> String {
         }
 
         let input = input.trim();
-        if patterns.contains(&input.to_string()) {
-            return input.to_string();
+        if patterns.contains(&input.to_owned()) {
+            return input.to_owned();
         }
         println!("{}", "invalid input".red().bold());
     }

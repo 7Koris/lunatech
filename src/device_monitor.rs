@@ -1,15 +1,19 @@
-use std::thread;
+use std::{net::UdpSocket, thread, time::Instant};
 use colored::{ColoredString, Colorize};
 use cpal::{traits::{DeviceTrait, StreamTrait}, BuildStreamError, SampleRate, StreamConfig};
 
 use crate::analyzer::Analyzer;
+use crate::service;
 
 pub struct DeviceMonitor {
-    device_name: ColoredString,
+    /// The name of the device
+    device_name: ColoredString, 
+    /// The data stream of the device
     stream: cpal::Stream
 }
 
 impl DeviceMonitor {
+
     pub fn new(device: &cpal::Device, sample_rate: u32, buffer_size: u32) -> Self {
         let stream = Self::get_built_stream(device, sample_rate, buffer_size);
 
@@ -22,7 +26,7 @@ impl DeviceMonitor {
             }
         };
 
-        Self {
+        Self {   
             device_name,
             stream
         }
@@ -34,7 +38,7 @@ impl DeviceMonitor {
                 println!("Monitoring device: {}", self.device_name);
                 thread::park();
             },
-            Err(e) => {
+            Err(e) => { 
                 println!("{}", e.to_string().bold().red());
                 panic!();
             }
@@ -43,10 +47,11 @@ impl DeviceMonitor {
 
     fn try_building_stream(device: &cpal::Device, config: &StreamConfig) -> Result<cpal::Stream, BuildStreamError>  {
         let mut analyzer = Analyzer::new(config.channels, config.sample_rate.0);
+        let service = service::Service::new();
 
-        // TODO: Send analyzer data over network
         let data_callback = move |sample_data: &[f32], _: &cpal::InputCallbackInfo| {   
             analyzer.feed_data(sample_data);
+            service.send_osc_features(&analyzer.features);
         };
     
         let error_callback = move |e: cpal::StreamError| {
@@ -75,6 +80,8 @@ impl DeviceMonitor {
 
         let stream =  Self::try_building_stream(device, config);
 
+        
+
         let stream = if stream.is_ok() {
             stream
         } else {
@@ -97,7 +104,24 @@ impl DeviceMonitor {
             Ok(stream) => stream,
             Err(e) => {
                 println!("{}", e.to_string().bold().red());
-                panic!();
+                println!("{}", "Main config failed, attempting to use backup config".bold().yellow());
+
+                let config = device.default_input_config();
+                let config = match config {
+                    Ok(config) => config,
+                    Err(e) => {
+                        println!("{}", e.to_string().bold().red());
+                        panic!();
+                    }
+                };
+
+                let stream = Self::try_building_stream(device, &config.config());
+                if stream.is_err() {
+                    println!("{}", e.to_string().bold().red());
+                    panic!();
+                } else {
+                    stream.unwrap()
+                }
             }
         }
     }

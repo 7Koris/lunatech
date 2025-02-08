@@ -6,6 +6,7 @@ const MID_RANGE: Range<f32> = 250.0..4000.0; // Hz
 const HIGH_RANGE: Range<f32> = 4000.0..20000.0; // Hz 
 
 #[derive(Default)]
+#[non_exhaustive]
 pub struct AudioFeatures {
     pub broad_range_peak_rms: f32,
     pub low_range_rms: f32,
@@ -18,6 +19,7 @@ pub struct Analyzer {
     fft_planner: RealFftPlanner<f32>,
     channel_count: u16,
     sample_rate: u32,
+    pub features: AudioFeatures,
 }
 
 impl Analyzer {
@@ -30,6 +32,7 @@ impl Analyzer {
             fft_planner: RealFftPlanner::new(),
             channel_count,
             sample_rate,
+            features: AudioFeatures::default(),
         }
     }
 
@@ -47,7 +50,7 @@ impl Analyzer {
         // TODO: Assign channels to a thread pool
         let mut new_features = AudioFeatures::default();
         for channel_index in 0..self.channel_count {
-            let channel_data = &data.iter().skip(channel_index.into()).cloned().collect::<Vec<f32>>();
+            let channel_data = &data.iter().skip(channel_index.into()).cloned().collect::<Vec<f32>>(); // CECK SKIPPIG
             let fft_plan = self.fft_planner.plan_fft_forward(channel_data.len());
             let mut input_vec = fft_plan.make_input_vec();
             input_vec.copy_from_slice(channel_data.as_slice());
@@ -67,6 +70,8 @@ impl Analyzer {
             new_features.low_range_rms += compute_rms(&low_range_magnitudes);
             new_features.mid_range_rms += compute_rms(&mid_range_magnitudes);
             new_features.high_range_rms += compute_rms(&high_range_magnitudes);
+
+            //TODO HIGPASS FILTER
             //current_features.fundamental_frequency += compute_fundamental_frequency(&broad_range_magnitudes, freqs);
         }   
 
@@ -76,6 +81,8 @@ impl Analyzer {
         new_features.mid_range_rms /= self.channel_count as f32;
         new_features.high_range_rms /= self.channel_count as f32;
         new_features.fundamental_frequency /= self.channel_count as f32;   
+
+        self.features = new_features;
     }
 } 
 
