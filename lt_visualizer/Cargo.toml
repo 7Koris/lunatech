@@ -1,0 +1,78 @@
+[package]
+name = "lt_visualizer"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "lt_visualizer"
+path = "src/bin/lt_visualizer.rs"
+
+[toolchain]
+channel = "nightly"
+
+# Enable a small amount of optimization in the dev profile.
+[profile.dev]
+opt-level = 1
+#codegen-backend = "cranelift"
+
+# Enable a large amount of optimization in the dev profile for dependencies.
+[profile.dev.package."*"]
+opt-level = 3
+#codegen-backend = "llvm"
+
+# Enable more optimization in the release profile at the cost of compile time.
+[profile.release]
+codegen-units = 1
+lto = "thin"
+
+# for Linux
+[target.x86_64-unknown-linux-gnu]
+linker = "clang"
+rustflags = ["-C", "link-arg=-fuse-ld=lld", "-Zshare-generics=y"]
+
+# for Windows
+[target.x86_64-pc-windows-msvc]
+linker = "rust-lld.exe"
+
+[unstable]
+codegen-backend = true
+
+[dependencies]
+lt_client = { path = "../lt_client" }
+bevy = { version = "0.15.2", features = [
+    "dynamic_linking",
+    "jpeg",
+    "shader_format_glsl",
+    "shader_format_spirv",
+    #"spirv_shader_passthrough",
+    "wayland",
+    "animation",
+    "bevy_animation",
+    "bevy_asset",
+    "bevy_color",
+    "bevy_gizmos",
+   # "bevy_gltf",
+    "bevy_pbr",
+    "bevy_picking",
+    "bevy_render",
+    "bevy_scene",
+    "bevy_sprite",
+    "bevy_sprite_picking_backend",
+    "bevy_state",
+    "bevy_text",
+    "bevy_ui",
+    "bevy_ui_picking_backend",
+    "bevy_window",
+    "bevy_winit",
+    "default_font",
+    "multi_threaded",
+    "png",
+    "smaa_luts",
+    "sysinfo_plugin",
+    "tonemapping_luts",
+    #"webgl2",
+    "x11",
+    "zstd",
+]}
+bevy_dylib = { version = "0.15.0-rc.3" }
+log = { version = "*", features = ["max_level_debug", "release_max_level_warn"] }

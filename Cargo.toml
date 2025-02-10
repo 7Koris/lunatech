@@ -1,4 +1,5 @@
 [workspace]
+resolver = "2"
 members = [
-    "lt_server", "lt_client",
+    "lt_server", "lt_client", "lt_visualizer",
 ]

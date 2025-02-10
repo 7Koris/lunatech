@@ -5,11 +5,11 @@ use std::mem::MaybeUninit;
 use std::net::{Ipv4Addr, SocketAddrV4};
 use socket2::{Domain, Protocol, SockAddr, Socket, Type};
 
-pub struct Client {
+pub struct LunaTechClient {
     pub socket: Socket,
 }
 
-impl Client {
+impl LunaTechClient {
     
     pub fn new(port: u16) -> Self {
         let socket = Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::UDP)).expect("Failed to create socket");
