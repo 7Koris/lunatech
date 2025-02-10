@@ -1,0 +1,23 @@
+[package]
+name = "lt_server"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "lt_server"
+path = "src/bin/lt_server.rs"
+
+[profile.dev]
+opt-level = 2
+#overflow-checks = false  
+
+[dependencies]
+clap = "4.5.28"
+colored = "3.0.0"
+cpal = { version = "0.15.3", features = ["jack"] }
+gag = "1.0.0"
+realfft = "3.4.0"
+rosc = "0.10.1"
+socket2 = "0.5.8"
+tokio = {version = "1.43.0", features = ["net", "rt", "macros", "rt-multi-thread", "sync"]}
+

@@ -1,11 +1,11 @@
-use std::ops::Range; 
+use std::{ops::Range, thread}; 
 use realfft::RealFftPlanner;
 
 const LOW_RANGE: Range<f32> = 0.0..250.0; // Hz
 const MID_RANGE: Range<f32> = 250.0..4000.0; // Hz
 const HIGH_RANGE: Range<f32> = 4000.0..20000.0; // Hz 
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 #[non_exhaustive]
 pub struct AudioFeatures {
     pub broad_range_peak_rms: f32,
@@ -47,8 +47,13 @@ impl Analyzer {
     pub fn feed_data(&mut self, data: &[f32]) {
         assert!(self.channel_count > 0);
         
-        // TODO: Assign channels to a thread pool
         let mut new_features = AudioFeatures::default();
+        let mut broad_range_rms = vec![0.0; self.channel_count.into()];
+        let mut low_range_rms = vec![0.0; self.channel_count.into()];
+        let mut mid_range_rms = vec![0.0; self.channel_count.into()];
+        let mut high_range_rms = vec![0.0; self.channel_count.into()];
+
+    
         for channel_index in 0..self.channel_count {
             let channel_data = &data.iter().skip(channel_index.into()).cloned().collect::<Vec<f32>>(); // CECK SKIPPIG
             let fft_plan = self.fft_planner.plan_fft_forward(channel_data.len());
@@ -62,25 +67,24 @@ impl Analyzer {
             // https://www.ap.com/news/more-about-ffts (getting frequencies)
             let bin_size = self.sample_rate as f32 / spectrum_vec.len() as f32;
             let freqs = &broad_range_magnitudes.iter().enumerate().map(|(i, &_)| bin_size * i as f32).collect::<Vec<f32>>();
+            
             let low_range_magnitudes = filter_freq_range(broad_range_magnitudes.as_slice(), freqs.as_slice(), LOW_RANGE);
             let mid_range_magnitudes = filter_freq_range(broad_range_magnitudes.as_slice(), freqs.as_slice(), MID_RANGE);
             let high_range_magnitudes = filter_freq_range(broad_range_magnitudes.as_slice(), freqs.as_slice(), HIGH_RANGE);
-            
-            new_features.broad_range_peak_rms += compute_rms(&broad_range_magnitudes);
-            new_features.low_range_rms += compute_rms(&low_range_magnitudes);
-            new_features.mid_range_rms += compute_rms(&mid_range_magnitudes);
-            new_features.high_range_rms += compute_rms(&high_range_magnitudes);
 
             //TODO HIGPASS FILTER
-            //current_features.fundamental_frequency += compute_fundamental_frequency(&broad_range_magnitudes, freqs);
-        }   
 
-        // average of channels
-        new_features.broad_range_peak_rms /= self.channel_count as f32;
-        new_features.low_range_rms /= self.channel_count as f32;
-        new_features.mid_range_rms /= self.channel_count as f32;
-        new_features.high_range_rms /= self.channel_count as f32;
-        new_features.fundamental_frequency /= self.channel_count as f32;   
+            broad_range_rms[channel_index as usize] = compute_rms(&broad_range_magnitudes);
+            low_range_rms[channel_index as usize] = compute_rms(&low_range_magnitudes);
+            mid_range_rms[channel_index as usize] = compute_rms(&mid_range_magnitudes);
+            high_range_rms[channel_index as usize] = compute_rms(&high_range_magnitudes);
+        }
+
+        
+        new_features.broad_range_peak_rms = broad_range_rms.iter().sum::<f32>() / self.channel_count as f32;
+        new_features.low_range_rms = low_range_rms.iter().sum::<f32>() / self.channel_count as f32;
+        new_features.mid_range_rms = mid_range_rms.iter().sum::<f32>() / self.channel_count as f32;
+        new_features.high_range_rms = high_range_rms.iter().sum::<f32>() / self.channel_count as f32;
 
         self.features = new_features;
     }

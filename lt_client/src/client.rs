@@ -1,15 +1,8 @@
-use crate::analyzer::AudioFeatures;
-use crate::service;
+use lt_server::analyzer::AudioFeatures;
 
-use mdns_sd::{DaemonEvent, ServiceDaemon, ServiceEvent};
 use rosc::OscPacket;
-
-use core::panic;
-use std::env;
 use std::mem::MaybeUninit;
-use std::net::{Ipv4Addr, SocketAddrV4, UdpSocket};
-use std::str::FromStr;
-
+use std::net::{Ipv4Addr, SocketAddrV4};
 use socket2::{Domain, Protocol, SockAddr, Socket, Type};
 
 pub struct Client {
@@ -18,9 +11,9 @@ pub struct Client {
 
 impl Client {
     
-    pub fn new() -> Self {
+    pub fn new(port: u16) -> Self {
         let socket = Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::UDP)).expect("Failed to create socket");
-        let bindaddr: SockAddr = SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, 3000).into();
+        let bindaddr: SockAddr = SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, port).into();
         socket.set_broadcast(true).expect("Failed to set broadcast"); 
         socket.set_reuse_address(true).expect("Failed to set reuse address");
         socket.bind(&bindaddr).expect("Failed to bind socket");
@@ -32,9 +25,10 @@ impl Client {
         println!("Waiting for OSC packet...");
         let mut buf = [0u8; rosc::decoder::MTU];
         
-        let mut buf = unsafe { &mut *(&mut buf as *mut [u8] as *mut [MaybeUninit<u8>]) };
-        match self.socket.recv_from(&mut buf) {
-            Ok((size, addr)) => {
+        //TODO: REPLACE USNAFE WITH SAFE CODE
+        let buf = unsafe { &mut *(&mut buf as *mut [u8] as *mut [MaybeUninit<u8>]) };
+        match self.socket.recv(buf) {
+            Ok(size) => {
                 let buf = buf.iter().map(|x| unsafe { x.assume_init() }).collect::<Vec<_>>();
                 let (_, packet) = rosc::decoder::decode_udp(&buf[..size]).unwrap();
                 Self::handle_packet(packet);

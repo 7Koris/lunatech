@@ -1,28 +1,4 @@
-[package]
-name = "lunatech"
-version = "0.1.0"
-edition = "2021"
-
-[[bin]]
-name = "lt_service"
-path = "src/bin/lt_service.rs"
-
-[[bin]]
-name = "client"
-path = "src/bin/client_test.rs"
-
-[profile.dev]
-opt-level = 2
-#overflow-checks = false  
-
-[dependencies]
-clap = "4.5.28"
-colored = "3.0.0"
-cpal = { version = "0.15.3", features = ["jack"] }
-gag = "1.0.0"
-mdns-sd = "0.13.2"
-realfft = "3.4.0"
-rosc = "0.10.1"
-socket2 = "0.5.8"
-tokio = "1.43.0"
-
+[workspace]
+members = [
+    "lt_server", "lt_client",
+]
