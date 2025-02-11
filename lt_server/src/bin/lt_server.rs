@@ -1,4 +1,5 @@
 use std::thread;
+use std::time::Duration;
 
 use clap::{value_parser, ArgAction};
 
@@ -10,6 +11,7 @@ use tokio::sync::mpsc;
 
 const DEFAULT_SAMPLE_RATE: u32 = 44100;
 const DEFAULT_BUFFER_SIZE: u32 = 256 * 4;
+const DEFAULT_PORT: u16 = 3000;
 const CHANNEL_SIZE: usize = 100; //? Select a meaningful channel size
 
 #[tokio::main]
@@ -34,16 +36,27 @@ async fn main() {
                 .action(ArgAction::Set)
                 .value_parser(value_parser!(u32))
         )
+        .arg(
+            clap::Arg::new("port")
+                .short('p')
+                .long("port")
+                .help("Set the port to broadcast on")
+                .action(ArgAction::Set)
+                .value_parser(value_parser!(u16))
+        )
         .get_matches();
     println!("{}{} Server\n", "Luna".red().bold(), "Tech".cyan().bold());
+    
+    // TODO: INTERACTIVE MODE (allow args for I/O mode and device #, or default if not specified)
 
     let sample_rate = matches.get_one::<u32>("sample_rate").unwrap_or(&DEFAULT_SAMPLE_RATE);
     let buffer_size = matches.get_one::<u32>("buffer_size").unwrap_or(&DEFAULT_BUFFER_SIZE);
+    let port = matches.get_one::<u16>("port").unwrap_or(&DEFAULT_PORT);
     
     let host = cpal::default_host();
     let device = prompts::select_device_by_prompt(&host);
 
-    let mut server = server::LunaTechServer::new(3000);
+    let mut server = server::LunaTechServer::new(*port);
     let mut device_monitor = device_monitor::DeviceMonitor::new(*sample_rate, *buffer_size);
     let (thread_sender, thread_receiver) = mpsc::channel(CHANNEL_SIZE);
 
@@ -63,5 +76,8 @@ async fn main() {
     println!("{}", "Server started successfully\n".cyan().bold());
     
     println!("{}{} {}", "Luna".red().bold(), "Tech".cyan().bold(), "server is now running".bold()); 
-    thread::park();
+
+    loop {
+        thread::park();
+    }
 }

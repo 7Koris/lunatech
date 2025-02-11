@@ -16,6 +16,7 @@ clap = "4.5.28"
 colored = "3.0.0"
 cpal = { version = "0.15.3", features = ["jack"] }
 gag = "1.0.0"
+rayon = "1.10.0"
 realfft = "3.4.0"
 rosc = "0.10.1"
 socket2 = "0.5.8"

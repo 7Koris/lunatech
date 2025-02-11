@@ -9,6 +9,7 @@ use crate::analyzer::AudioFeatures;
 pub struct LunaTechServer {
     socket: Arc<UdpSocket>,
     addrs: SocketAddr,
+    /// Receiver channel for audio features
     rx: Arc<Mutex<Option<mpsc::Receiver<AudioFeatures>>>>,
 }
 
