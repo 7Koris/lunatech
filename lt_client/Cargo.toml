@@ -15,5 +15,3 @@ opt-level = 2
 lt_server = { path = "../lt_server" }
 rosc = "0.10.1"
 socket2 = "0.5.8"
-tokio = {version = "1.43.0", features = ["net", "rt", "macros", "rt-multi-thread", "sync"]}
-async-std = { version = "1", features = ["attributes", "tokio1"] }

@@ -1,12 +1,13 @@
 use std::{ops::Range, sync::{Arc, Mutex}, thread, u16}; 
-use colored::Colorize;
 use realfft::RealFftPlanner;
 use rayon::prelude::*;
 
 const LOW_RANGE: Range<f32> = 0.0..250.0; // Hz
 const MID_RANGE: Range<f32> = 250.0..4000.0; // Hz
 const HIGH_RANGE: Range<f32> = 4000.0..20000.0; // Hz 
-const GAMMA: f32 = 900.0; // Used for log compression
+const GAMMA: f32 = 1.8; // Used for log compression
+
+type ArcMutex<T> = Arc<Mutex<T>>;
 
 #[derive(Default, Clone)]
 #[non_exhaustive]
@@ -19,7 +20,7 @@ pub struct AudioFeatures {
 }
 
 pub struct Analyzer {
-    fft_planner: Arc<Mutex<RealFftPlanner<f32>>>,
+    fft_planner: ArcMutex<RealFftPlanner<f32>>, 
     channel_count: u16,
     sample_rate: u32,
     pub features: AudioFeatures,
@@ -43,7 +44,7 @@ impl Analyzer {
     pub fn feed_data(&mut self, data: &[f32]) {
         assert!(self.channel_count > 0);
         
-        let channels: Arc<Mutex<Vec<Vec<f32>>>> = Arc::new(Mutex::new(Vec::new()));
+        let channels: ArcMutex<Vec<Vec<f32>>> = Arc::new(Mutex::new(Vec::new()));
         (0..self.channel_count).collect::<Vec<u16>>().par_iter().for_each(|channel_index| {
             let channel_data  = data.iter().skip((*channel_index) as usize).cloned().collect::<Vec<f32>>();
             if let Ok(mut channels) = channels.lock() {
@@ -62,11 +63,19 @@ impl Analyzer {
                     let _ = fft_plan.process(&mut input_vec, &mut spectrum_vec); // realfft halves data length (avoiding redundant data)
                     
                     // |a| / (b^2 + w^2)^1/2, let |a| = 1 (https://pages.jh.edu/signals/spectra/spectra.html)
+                    let size = spectrum_vec.len() as f32;
                     let broad_range_magnitudes = spectrum_vec.iter().map(|x| {
-                        let z = x.norm_sqr();
-                        let z = z / (z).sqrt(); // Normalization step
+                        let a = x.norm_sqr();
+                        
+                        if a == 0.0 {
+                            return 0.0;
+                        }
+
+                        let z = a / size.sqrt(); // Normalization step
                         (1.0 + z * GAMMA).log(10.0) / (1.0 + z) // Log-Compression step
+                       //z
                     }).collect::<Vec<f32>>();
+                    
 
                     
                     //  https://www.ap.com/news/more-about-ffts (getting frequencies)
@@ -79,8 +88,20 @@ impl Analyzer {
                     
                     //TODO HIGPASS FILTER
 
+                    // normalize broad_range mags even further 
+                    // TODO: DO THIS BETTER!
+                    let minx = broad_range_magnitudes.iter().fold(f32::INFINITY, |acc, x| acc.min(*x));
+                    let maxx = broad_range_magnitudes.iter().fold(f32::NEG_INFINITY, |acc, x| acc.max(*x));
+                    let broad_range_magnitudes = broad_range_magnitudes.iter().map(|x|  {
+                        if x == &0.0 {
+                            return 0.0;
+                        }
+                        (x - minx) / (maxx - minx)
+                    }).collect::<Vec<f32>>();
+
+                    
                     Some(AudioFeatures {
-                            broad_range_peak_rms: compute_peak_rms(&broad_range_magnitudes),
+                            broad_range_peak_rms: compute_rms(&broad_range_magnitudes),
                             low_range_rms: compute_rms(&low_range_magnitudes),
                             mid_range_rms: compute_rms(&mid_range_magnitudes),
                             high_range_rms: compute_rms(&high_range_magnitudes),
@@ -99,11 +120,16 @@ impl Analyzer {
         let channel_features: Vec<AudioFeatures> = channel_features.into_iter().flatten().collect();
         self.features = AudioFeatures {
             broad_range_peak_rms: channel_features.iter().map(|x| x.broad_range_peak_rms).sum::<f32>() / self.channel_count as f32,
-            low_range_rms: channel_features.iter().map(|x| x.broad_range_peak_rms).sum::<f32>() / self.channel_count as f32,
-            mid_range_rms: channel_features.iter().map(|x| x.broad_range_peak_rms).sum::<f32>() / self.channel_count as f32,
-            high_range_rms: channel_features.iter().map(|x| x.broad_range_peak_rms).sum::<f32>() / self.channel_count as f32,
+            low_range_rms: channel_features.iter().map(|x| x.low_range_rms).sum::<f32>() / self.channel_count as f32,
+            mid_range_rms: channel_features.iter().map(|x| x.mid_range_rms).sum::<f32>() / self.channel_count as f32,
+            high_range_rms: channel_features.iter().map(|x| x.high_range_rms).sum::<f32>() / self.channel_count as f32,
             fundamental_frequency: 0.0,
         };
+
+        //println!("broad range peak rms: {}", self.features.broad_range_peak_rms);
+        // println!("low range rms: {}", self.features.low_range_rms);
+        // println!("mid range rms: {}", self.features.mid_range_rms);
+        // println!("high range rms: {}", self.features.high_range_rms);
     }
 } 
 

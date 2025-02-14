@@ -1,21 +1,16 @@
 use std::thread;
-use std::time::Duration;
-
 use clap::{value_parser, ArgAction};
-
 use colored::Colorize;
+
 use lt_server::prompts;
 use lt_server::device_monitor;
 use lt_server::server;
-use tokio::sync::mpsc;
 
 const DEFAULT_SAMPLE_RATE: u32 = 44100;
 const DEFAULT_BUFFER_SIZE: u32 = 256 * 4;
 const DEFAULT_PORT: u16 = 3000;
-const CHANNEL_SIZE: usize = 100; //? Select a meaningful channel size
 
-#[tokio::main]
-async fn main() {
+fn main() {
     let matches = clap::Command::new("lunatech server")
         .version("1.0")
         .author("Koris")
@@ -58,10 +53,12 @@ async fn main() {
 
     let mut server = server::LunaTechServer::new(*port);
     let mut device_monitor = device_monitor::DeviceMonitor::new(*sample_rate, *buffer_size);
-    let (thread_sender, thread_receiver) = mpsc::channel(CHANNEL_SIZE);
 
-    device_monitor.set_thread_sender(thread_sender);
-    server.set_thread_receiver(thread_receiver);
+    // Todo: Check if bounded is faster
+    let (tx, rx) = crossbeam::channel::unbounded();
+
+    device_monitor.set_thread_sender(tx);
+    server.set_thread_receiver(rx);
 
     device_monitor.build_stream_from_device(&device).unwrap_or_else(|_| { 
         panic!("{}", "Failed to set device".bold().red().to_string()) 
@@ -72,7 +69,7 @@ async fn main() {
     println!("{}", "Monitor started successfully\n".cyan().bold());
         
     println!("Starting server");
-    server.start_server().await;
+    server.start_server();
     println!("{}", "Server started successfully\n".cyan().bold());
     
     println!("{}{} {}", "Luna".red().bold(), "Tech".cyan().bold(), "server is now running".bold()); 

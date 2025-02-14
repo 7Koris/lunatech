@@ -1,9 +1,11 @@
-use std::{error::Error, sync::Arc};
+use std::{error::Error, sync::{Arc, Mutex}};
 use colored::Colorize;
+use crossbeam::channel::Sender;
 use cpal::{traits::{DeviceTrait, StreamTrait}, SampleRate, StreamConfig};
-use tokio::sync::{mpsc::{self}, Mutex};
 
 use crate::analyzer::{Analyzer, AudioFeatures};
+
+type ArcMutex<T> = Arc<Mutex<T>>;
 
 #[derive(Default)]
 pub struct DeviceMonitor {
@@ -13,7 +15,7 @@ pub struct DeviceMonitor {
     device_name: Option<String>, 
     /// The data stream of the device
     stream: Option<cpal::Stream>,
-    tx: Option<Arc<Mutex<mpsc::Sender<AudioFeatures>>>>,
+    tx: Option<ArcMutex<Sender<AudioFeatures>>>,
     // Struct containing audio features
     pub audio_features: Arc<Mutex<AudioFeatures>>,
 }
@@ -31,8 +33,8 @@ impl DeviceMonitor {
         }
     }
 
-    pub fn set_thread_sender(&mut self, thread_sender: mpsc::Sender<AudioFeatures>) {
-        self.tx = Some(Arc::new(Mutex::new(thread_sender)));
+    pub fn set_thread_sender(&mut self, tx: crossbeam::channel::Sender<AudioFeatures>) {
+        self.tx = Some(Arc::new(Mutex::new(tx)));
     }
 
     pub fn start_device_monitor(&self) {
@@ -92,25 +94,14 @@ impl DeviceMonitor {
         };
         
         let shared_sender = Arc::clone(sender);
-        let tk_handle = tokio::runtime::Handle::current();
 
         let data_callback = move |sample_data: &[f32], _: &cpal::InputCallbackInfo| {
             analyzer.feed_data(sample_data);
-            let sender = shared_sender.clone();
-            let data_clone = analyzer.features.clone();
-            
-            let tk_handle = tk_handle.clone();
-            let _rt = tk_handle.enter();
-
-            tokio::spawn(async move {
-                let data = data_clone.clone();
-                let sender = sender.lock().await ;
-                let result = sender.send(data).await;
-
-                if result.is_err() {
-                    println!("Failed to send data: {}", result.err().unwrap().to_string().bold().red());
-                }
-            });
+            let tx = shared_sender.clone();
+            let tx_lock = tx.lock();
+            if let Ok(tx) = tx_lock {
+                let _ = tx.send(analyzer.features.clone());
+            }
         };
 
         let error_callback = move |e: cpal::StreamError| {
