@@ -13,5 +13,6 @@ opt-level = 2
 
 [dependencies]
 lt_server = { path = "../lt_server" }
+lt_utilities = { path = "../lt_utilities" }
 rosc = "0.10.1"
 socket2 = "0.5.8"

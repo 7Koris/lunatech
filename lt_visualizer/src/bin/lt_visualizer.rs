@@ -1,25 +1,21 @@
-use std::sync::Mutex;
+use std::sync::Arc;
 use bevy::{
     color::palettes::css::*,
     math::Isometry2d,
     prelude::*,
 };
-use lazy_static::lazy_static;
 
 use lt_client::client::LunaTechClient;
 
-const SPIN_SPEED: f32 = 100.;
-lazy_static! {
-    static ref CLIENT: Mutex<LunaTechClient> = Mutex::new(LunaTechClient::new(3000));
-    static ref SPINMULT: Mutex<f32> = Mutex::new(0.);
+#[derive(Resource)]
+struct GlobalClient {
+    client: Arc<LunaTechClient>
 }
 
 fn main() {
-    CLIENT.lock().unwrap().start_client();
     App::new()
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, setup)
-        .add_systems(Update, update_controls)
         .add_systems(
             Update,
             spin,
@@ -34,22 +30,11 @@ fn main() {
         .run();
 }
 
-
-fn update_controls() {
-    let client = CLIENT.lock().unwrap();
-    let audio_features = client.get_audio_features().unwrap();
-    let mut sm = SPINMULT.lock().unwrap();
-    let _ = sm.set(Box::new(audio_features.high_range_rms));
-}
-
-
 #[derive(Component)]
 struct Spin;
-
-fn spin(time: Res<Time>, mut query: Query<&mut Transform, With<Spin>>) {
+fn spin(time: Res<Time>, mut query: Query<&mut Transform, With<Spin>>, gc: Res<GlobalClient>) {
     for mut transform in query.iter_mut() {
-        let spin_mult = *SPINMULT.lock().unwrap();
-        transform.rotation *= Quat::from_rotation_z(time.delta_secs() / 5. * SPIN_SPEED * spin_mult);
+        transform.rotation *= Quat::from_rotation_z(time.delta_secs() / 5. * 100. * gc.client.audio_features.broad_range_peak_rms.get());
     }
 }
 
@@ -96,6 +81,8 @@ const OFFSET_X: f32 = 125.;
 const OFFSET_Y: f32 = 75.;
 
 fn setup(mut commands: Commands) {
+    commands.insert_resource(GlobalClient { client: LunaTechClient::new(3000).into() });
+
     commands.spawn(Camera2d);
 
     commands.spawn((

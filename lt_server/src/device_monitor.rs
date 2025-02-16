@@ -1,23 +1,20 @@
-use std::{error::Error, sync::{Arc, Mutex}};
+use std::{error::Error, sync::Arc};
 use colored::Colorize;
 use crossbeam::channel::Sender;
 use cpal::{traits::{DeviceTrait, StreamTrait}, SampleRate, StreamConfig};
 
-use crate::analyzer::{Analyzer, AudioFeatures};
+use crate::analyzer::Analyzer;
 
-type ArcMutex<T> = Arc<Mutex<T>>;
+use lt_utilities::audio_features::Features;
 
 #[derive(Default)]
 pub struct DeviceMonitor {
-    /// The name of the device
     sample_rate: u32,
     buffer_size: u32,
     device_name: Option<String>, 
     /// The data stream of the device
     stream: Option<cpal::Stream>,
-    tx: Option<ArcMutex<Sender<AudioFeatures>>>,
-    // Struct containing audio features
-    pub audio_features: Arc<Mutex<AudioFeatures>>,
+    tx: Option<Arc<Sender<Features>>>,
 }
 
 impl DeviceMonitor {
@@ -29,12 +26,11 @@ impl DeviceMonitor {
             device_name: None,
             stream: None,
             tx: None,
-            audio_features: Arc::new(Mutex::new(AudioFeatures::default())),
         }
     }
 
-    pub fn set_thread_sender(&mut self, tx: crossbeam::channel::Sender<AudioFeatures>) {
-        self.tx = Some(Arc::new(Mutex::new(tx)));
+    pub fn set_thread_sender(&mut self, tx: crossbeam::channel::Sender<Features>) {
+        self.tx = Some(tx.into());
     }
 
     pub fn start_device_monitor(&self) {
@@ -93,15 +89,17 @@ impl DeviceMonitor {
             None => return Err("Sender not initialized".into()),
         };
         
-        let shared_sender = Arc::clone(sender);
+        let shared_sender = sender.clone();
 
         let data_callback = move |sample_data: &[f32], _: &cpal::InputCallbackInfo| {
             analyzer.feed_data(sample_data);
             let tx = shared_sender.clone();
-            let tx_lock = tx.lock();
-            if let Ok(tx) = tx_lock {
-                let _ = tx.send(analyzer.features.clone());
-            }
+            let _ = tx.send((
+                analyzer.audio_features.broad_range_peak_rms.get(),
+                analyzer.audio_features.low_range_rms.get(),
+                analyzer.audio_features.mid_range_rms.get(),
+                analyzer.audio_features.high_range_rms.get(),
+            ));
         };
 
         let error_callback = move |e: cpal::StreamError| {

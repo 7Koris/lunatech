@@ -1,29 +1,20 @@
-use std::{ops::Range, sync::{Arc, Mutex}, thread, u16}; 
+use std::ops::Range; 
+use lt_utilities::audio_features::{AtomicAudioFeatures, Features};
 use realfft::RealFftPlanner;
 use rayon::prelude::*;
+
+use lt_utilities::ArcMutex;
 
 const LOW_RANGE: Range<f32> = 0.0..250.0; // Hz
 const MID_RANGE: Range<f32> = 250.0..4000.0; // Hz
 const HIGH_RANGE: Range<f32> = 4000.0..20000.0; // Hz 
 const GAMMA: f32 = 1.8; // Used for log compression
 
-type ArcMutex<T> = Arc<Mutex<T>>;
-
-#[derive(Default, Clone)]
-#[non_exhaustive]
-pub struct AudioFeatures {
-    pub broad_range_peak_rms: f32,
-    pub low_range_rms: f32,
-    pub mid_range_rms: f32,
-    pub high_range_rms: f32,
-    pub fundamental_frequency: f32,
-}
-
 pub struct Analyzer {
     fft_planner: ArcMutex<RealFftPlanner<f32>>, 
     channel_count: u16,
     sample_rate: u32,
-    pub features: AudioFeatures,
+    pub audio_features: AtomicAudioFeatures,
 }
 
 impl Analyzer {
@@ -34,17 +25,17 @@ impl Analyzer {
         }
 
         Self {
-            fft_planner: Arc::new(Mutex::new(RealFftPlanner::new())),
+            fft_planner: ArcMutex!(RealFftPlanner::new()),
             channel_count,
             sample_rate,
-            features: AudioFeatures::default(),
+            audio_features: AtomicAudioFeatures::default(),
         }
     }
 
     pub fn feed_data(&mut self, data: &[f32]) {
         assert!(self.channel_count > 0);
         
-        let channels: ArcMutex<Vec<Vec<f32>>> = Arc::new(Mutex::new(Vec::new()));
+        let channels: ArcMutex<Vec<Vec<f32>>> = ArcMutex!(Vec::new());
         (0..self.channel_count).collect::<Vec<u16>>().par_iter().for_each(|channel_index| {
             let channel_data  = data.iter().skip((*channel_index) as usize).cloned().collect::<Vec<f32>>();
             if let Ok(mut channels) = channels.lock() {
@@ -54,7 +45,7 @@ impl Analyzer {
 
         let channel_lock = channels.lock();
         let mut channel_features = if let Ok(channels) = channel_lock {
-            let result: Vec<Option<AudioFeatures>> = channels.iter().map(|channel_data| {
+            let result: Vec<Option<Features>> = channels.iter().map(|channel_data| {  
                 if let Ok(mut fft_planner) = self.fft_planner.lock() {
                     let fft_plan = fft_planner.plan_fft_forward(channel_data.len());
                     let mut input_vec = fft_plan.make_input_vec();
@@ -100,13 +91,12 @@ impl Analyzer {
                     }).collect::<Vec<f32>>();
 
                     
-                    Some(AudioFeatures {
-                            broad_range_peak_rms: compute_rms(&broad_range_magnitudes),
-                            low_range_rms: compute_rms(&low_range_magnitudes),
-                            mid_range_rms: compute_rms(&mid_range_magnitudes),
-                            high_range_rms: compute_rms(&high_range_magnitudes),
-                            fundamental_frequency: 0.0,
-                    })
+                    Some((
+                        compute_rms(&broad_range_magnitudes),
+                        compute_rms(&low_range_magnitudes),
+                        compute_rms(&mid_range_magnitudes),
+                        compute_rms(&high_range_magnitudes),
+                    ))
                 } else {
                     None
                 }
@@ -117,19 +107,11 @@ impl Analyzer {
         };
 
         channel_features.retain(|x| x.is_some());
-        let channel_features: Vec<AudioFeatures> = channel_features.into_iter().flatten().collect();
-        self.features = AudioFeatures {
-            broad_range_peak_rms: channel_features.iter().map(|x| x.broad_range_peak_rms).sum::<f32>() / self.channel_count as f32,
-            low_range_rms: channel_features.iter().map(|x| x.low_range_rms).sum::<f32>() / self.channel_count as f32,
-            mid_range_rms: channel_features.iter().map(|x| x.mid_range_rms).sum::<f32>() / self.channel_count as f32,
-            high_range_rms: channel_features.iter().map(|x| x.high_range_rms).sum::<f32>() / self.channel_count as f32,
-            fundamental_frequency: 0.0,
-        };
-
-        //println!("broad range peak rms: {}", self.features.broad_range_peak_rms);
-        // println!("low range rms: {}", self.features.low_range_rms);
-        // println!("mid range rms: {}", self.features.mid_range_rms);
-        // println!("high range rms: {}", self.features.high_range_rms);
+        let channel_features: Vec<Features> = channel_features.into_iter().flatten().collect();
+        self.audio_features.broad_range_peak_rms.set(channel_features.iter().map(|x| x.0).sum::<f32>() / self.channel_count as f32);
+        self.audio_features.low_range_rms.set(channel_features.iter().map(|x| x.1).sum::<f32>() / self.channel_count as f32);
+        self.audio_features.mid_range_rms.set(channel_features.iter().map(|x| x.2).sum::<f32>() / self.channel_count as f32);
+        self.audio_features.high_range_rms.set(channel_features.iter().map(|x| x.3).sum::<f32>() / self.channel_count as f32);
     }
 } 
 

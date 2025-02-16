@@ -1,20 +1,16 @@
 use std::mem::{self, MaybeUninit};
 use std::net::{Ipv4Addr, SocketAddrV4};
-use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use std::sync::Arc;
 use std::thread;
+use lt_utilities::audio_features::AtomicAudioFeatures;
 use rosc::OscPacket;
 use socket2::{Domain, Protocol, SockAddr, Socket, Type};
-
-use lt_server::analyzer::AudioFeatures;
-use lt_server::server::OscAddresses;
-
-type ArcMutex<T> = Arc<Mutex<T>>;
+use lt_utilities::OscAddresses;
 
 pub struct LunaTechClient {
-    pub socket: Arc<Socket>,
-    pub audio_features: ArcMutex<AudioFeatures>
+    socket: Arc<Socket>,
+    pub audio_features: Arc<AtomicAudioFeatures>
 }
-
 
 impl LunaTechClient {
     
@@ -25,36 +21,31 @@ impl LunaTechClient {
         socket.set_reuse_address(true).expect("Failed to set reuse address");
         socket.bind(&bindaddr).expect("Failed to bind socket");
         
-        Self { 
+        let client = Self { 
             socket: socket.into(), 
-            audio_features: Arc::new(Mutex::new(AudioFeatures::default()))
-        }
+            audio_features: AtomicAudioFeatures::default().into()
+        };
+
+        client.start_client();
+        client
     }
 
-    pub fn get_audio_features(&self) -> Result<AudioFeatures, PoisonError<MutexGuard<'_, AudioFeatures>>> {
-        let result = self.audio_features.lock();
-
-        match result {
-            Ok(features) => Ok(features.clone()),
-            Err(e) => Err(e)
-        }
-    }
-
-    pub fn start_client(&self) {
+    fn start_client(&self) {
         let socket_clone = self.socket.clone();
-        let audio_features_clone = Arc::clone(&self.audio_features);
+        let audio_features = self.audio_features.clone();
 
         thread::spawn(move || {
             let mut buf = [MaybeUninit::<u8>::uninit(); rosc::decoder::MTU];
             loop {
                 let result = socket_clone.recv(&mut buf);
 
-                let data = unsafe { mem::transmute::<[std::mem::MaybeUninit<u8>; 1536], [u8; 1536]>(buf) };
+                // Todo: Safe?
+                let data = unsafe { mem::transmute::<[std::mem::MaybeUninit<u8>; rosc::decoder::MTU], [u8; 1536]>(buf) };
                 
                 if let Ok(size) = result {
                     match rosc::decoder::decode_udp(&data[..size]) {
                         Ok((_, packet)) => {
-                            Self::handle_packet(packet, &audio_features_clone);
+                            Self::handle_packet(packet, &audio_features);
                         }
                         Err(e) => {
                             println!("Got invalid packet: {}", e);
@@ -65,9 +56,7 @@ impl LunaTechClient {
         });
     }
 
-    fn handle_packet(packet: OscPacket, audio_features: &Mutex<AudioFeatures>) {
-        let audio_features = audio_features.lock();
-        if let Ok(mut audio_features) = audio_features {
+    fn handle_packet(packet: OscPacket, audio_features: &AtomicAudioFeatures) {
             match packet {
                 OscPacket::Message(_msg) => {}
                 OscPacket::Bundle(bundle) => {
@@ -75,19 +64,19 @@ impl LunaTechClient {
                     // TODO: Use timetag
                     bundle.content.iter().for_each(|packet| {
                         if let OscPacket::Message(msg) = packet {
-                            if let Some(f) = <rosc::OscType as Clone>::clone(&msg.args[0]).float() {
+                            if let Some(val) = <rosc::OscType as Clone>::clone(&msg.args[0]).float() {
                                 match msg.addr.as_str() {
                                     OscAddresses::BROAD_RMS => {
-                                        audio_features.broad_range_peak_rms = f;
+                                        audio_features.broad_range_peak_rms.set(val);
                                     }
                                     OscAddresses::LOW_RMS => {
-                                        audio_features.low_range_rms = f;
+                                        audio_features.low_range_rms.set(val);
                                     }
                                     OscAddresses::MID_RMS => {
-                                        audio_features.mid_range_rms = f;
+                                        audio_features.mid_range_rms.set(val);
                                     }
                                     OscAddresses::HIGH_RMS => {
-                                        audio_features.high_range_rms = f;
+                                        audio_features.high_range_rms.set(val);
                                     }
                                     _ => {}
                                 }
@@ -98,7 +87,7 @@ impl LunaTechClient {
             }
         }
     }
-}
+
 
 
 

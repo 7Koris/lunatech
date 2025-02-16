@@ -1,18 +1,16 @@
-use std::{net::{ Ipv4Addr, SocketAddr}, sync::{Arc, Mutex}, thread, time::{Duration, UNIX_EPOCH}};
+use std::{net::{ Ipv4Addr, SocketAddr}, sync::Arc, thread, time::{Duration, UNIX_EPOCH}};
 use colored::Colorize;
 use rosc::{encoder, OscBundle, OscError, OscMessage, OscPacket, OscTime, OscType};
 use socket2::{Domain, Protocol, SockAddr, Socket, Type};
 use crossbeam::channel::Receiver;
 
-use crate::analyzer::AudioFeatures;
+use lt_utilities::{audio_features::Features, OscAddresses};
 
-type ArcMutex<T> = Arc<Mutex<T>>;
 
 pub struct LunaTechServer {
     socket: Arc<Socket>,
     addrs: SockAddr,
-    /// Receiver channel for audio features
-    rx: Option<Arc<Mutex<Receiver<AudioFeatures>>>>,
+    rx: Option<Arc<Receiver<Features>>>,
 }
 
 impl LunaTechServer {
@@ -27,8 +25,8 @@ impl LunaTechServer {
         Self { socket: socket.into(), addrs, rx: None}
     }
 
-    pub fn set_thread_receiver(&mut self, rx: Receiver<AudioFeatures>) {
-        self.rx = Some(ArcMutex::new(rx.into()));
+    pub fn set_thread_receiver(&mut self, rx: Receiver<Features>) {
+        self.rx = Some(rx.into());
     }
 
     pub fn start_server(&self) {
@@ -44,21 +42,17 @@ impl LunaTechServer {
             None => panic!("Cannot start server without data input channel"),
         };
         
-        let shared_sender: ArcMutex<Receiver<AudioFeatures>> = Arc::clone(receiver);
-        
-
+        let rx = receiver.clone(); 
         thread::spawn(move || {
             let start_time: std::time::Instant = std::time::Instant::now();
             let epoch_start: Duration = UNIX_EPOCH.elapsed().unwrap_or(Duration::from_secs(0));
-            let rx = shared_sender.clone();
-            let rx = rx.lock().unwrap(); // TODO
-            let mut audio_features: Result<AudioFeatures, crossbeam::channel::RecvError>;
+            let mut audio_features: Result<Features, crossbeam::channel::RecvError>;
             loop {
                 audio_features = rx.recv();
                 if let Ok(features) = audio_features {
                     let secs = (epoch_start.as_secs() + start_time.elapsed().as_secs()) as u32;
                     let frac = start_time.elapsed().subsec_micros();
-                    if let Ok(buf) = features_to_osc(&features, secs, frac) {
+                    if let Ok(buf) = features_to_osc(features, secs, frac) {
                         let result = socket.send_to(&buf, &addrs);
                         match result {
                             Ok(_) => {},
@@ -73,18 +67,9 @@ impl LunaTechServer {
         }
     }
 
+fn features_to_osc(features: Features, secs: u32, frac: u32) -> Result<Vec<u8>, OscError> {
+    let (broad_range_peak_rms, low_range_rms, mid_range_rms, high_range_rms) = features;
 
-type OscAddress = &'static str;
-pub struct OscAddresses {}
-impl OscAddresses {
-    pub const BROAD_RMS: OscAddress = "/lt/broad_rms";
-    pub const LOW_RMS: OscAddress = "/lt/low_rms";
-    pub const MID_RMS: OscAddress = "/lt/mid_rms";
-    pub const HIGH_RMS: OscAddress = "/lt/high_rms";
-}
-
-
-fn features_to_osc(features: &AudioFeatures, secs: u32, frac: u32) -> Result<Vec<u8>, OscError> {
     encoder::encode(&OscPacket::Bundle(OscBundle {
         timetag: {
             OscTime::from((secs, frac))
@@ -93,25 +78,25 @@ fn features_to_osc(features: &AudioFeatures, secs: u32, frac: u32) -> Result<Vec
             OscPacket::Message(OscMessage {
                 addr: OscAddresses::BROAD_RMS.to_string(),
                 args: vec![
-                    OscType::Float(features.broad_range_peak_rms),
+                    OscType::Float(broad_range_peak_rms),
                 ],
             }),
             OscPacket::Message(OscMessage {
                 addr: OscAddresses::LOW_RMS.to_string(),
                 args: vec![
-                    OscType::Float(features.low_range_rms),
+                    OscType::Float(low_range_rms),
                 ],
             }),
             OscPacket::Message(OscMessage {
                 addr: OscAddresses::MID_RMS.to_string(),
                 args: vec![
-                    OscType::Float(features.mid_range_rms),
+                    OscType::Float(mid_range_rms),
                 ],
             }),
             OscPacket::Message(OscMessage {
                 addr: OscAddresses::HIGH_RMS.to_string(),
                 args: vec![
-                    OscType::Float(features.high_range_rms),
+                    OscType::Float(high_range_rms),
                 ],
             }),
         ],
