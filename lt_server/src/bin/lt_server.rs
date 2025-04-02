@@ -40,9 +40,10 @@ fn main() {
                 .value_parser(value_parser!(u16))
         )
         .get_matches();
-    println!("{}{} Server\n", "Luna".red().bold(), "Tech".cyan().bold());
+    println!("{}{} Server\n", "Luna".red().bold(), "Tech".purple().bold());
     
     // TODO: INTERACTIVE MODE (allow args for I/O mode and device #, or default if not specified)
+    // TODO: Replace crossbeam channel with std
 
     let sample_rate = matches.get_one::<u32>("sample_rate").unwrap_or(&DEFAULT_SAMPLE_RATE);
     let buffer_size = matches.get_one::<u32>("buffer_size").unwrap_or(&DEFAULT_BUFFER_SIZE);
@@ -65,14 +66,14 @@ fn main() {
     });
 
     println!("\nStarting device monitor");
-    device_monitor.start_device_monitor();
+    device_monitor.start_device_monitor(); 
     println!("{}", "Monitor started successfully\n".cyan().bold());
         
     println!("Starting server");
     server.start_server();
     println!("{}", "Server started successfully\n".cyan().bold());
     
-    println!("{}{} {}", "Luna".red().bold(), "Tech".cyan().bold(), "server is now running".bold()); 
+    println!("{}{} {}", "Luna".red().bold(), "Tech".purple().bold(), "server is now running".bold()); 
 
     loop {
         thread::park();

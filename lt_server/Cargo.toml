@@ -15,7 +15,7 @@ opt-level = 2
 lt_utilities = { path = "../lt_utilities" }
 clap = "4.5.28"
 colored = "3.0.0"
-cpal = { version = "0.15.3", features = ["jack"] }
+cpal = { version = "0.15.3", features = ["jack", "asio"] }
 crossbeam = "0.8.4"
 gag = "1.0.0"
 rayon = "1.10.0"

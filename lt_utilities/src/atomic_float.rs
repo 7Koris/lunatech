@@ -1,7 +1,13 @@
+pub type OscAddress = &'static str;
+
 #[macro_export]
 macro_rules! atomic_float {
     ($name:ident) => {
         pub type $name = f32;
+
+        paste::paste! {
+            pub const [<OSC_ADDR_$name:upper>]: atomic_float::OscAddress = concat!("/lt/", stringify!($name)); 
+        }
 
         paste::paste! {
             pub struct [<$name Atomic>] {
