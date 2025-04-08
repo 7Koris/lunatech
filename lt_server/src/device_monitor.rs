@@ -1,4 +1,5 @@
 use std::{error::Error, sync::Arc};
+use clap::error;
 use colored::Colorize;
 use crossbeam::channel::Sender;
 use cpal::{traits::{DeviceTrait, StreamTrait}, SampleRate, StreamConfig};
@@ -15,6 +16,7 @@ pub struct DeviceMonitor {
     /// The data stream of the device
     stream: Option<cpal::Stream>,
     tx: Option<Arc<Sender<Features>>>,
+    error_msg: Option<String>,
 }
 
 impl DeviceMonitor {
@@ -26,6 +28,7 @@ impl DeviceMonitor {
             device_name: None,
             stream: None,
             tx: None,
+            error_msg: None,
         }
     }
 
@@ -95,10 +98,13 @@ impl DeviceMonitor {
             analyzer.feed_data(sample_data);
             let tx = shared_sender.clone();
             let _ = tx.send((
-                analyzer.audio_features.broad_range_peak_rms.get(),
+                analyzer.audio_features.broad_range_rms.get(),
                 analyzer.audio_features.low_range_rms.get(),
                 analyzer.audio_features.mid_range_rms.get(),
                 analyzer.audio_features.high_range_rms.get(),
+                analyzer.audio_features.zcr.get(),
+                analyzer.audio_features.spectral_centroid.get(),
+                analyzer.audio_features.flux.get(),
             ));
         };
 
