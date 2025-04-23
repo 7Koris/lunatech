@@ -1,0 +1,27 @@
+[gd_scene load_steps=2 format=3 uid="uid://k2ntigbplk8j"]
+
+[ext_resource type="Script" uid="uid://qqw2pbia833x" path="res://assets/scripts/gui/scene_entry.gd" id="1_u4o4w"]
+
+[node name="SceneEntry" type="MarginContainer"]
+custom_minimum_size = Vector2(0, 50)
+script = ExtResource("1_u4o4w")
+
+[node name="Hbox" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="Hbox"]
+layout_mode = 2
+
+[node name="Color" type="ColorRect" parent="Hbox/MarginContainer"]
+layout_mode = 2
+color = Color(0.748642, 0.235611, 0.342267, 1)
+
+[node name="CheckBox" type="CheckBox" parent="Hbox/MarginContainer"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Hbox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+text = "Lorem Ipsum"
+
+[connection signal="toggled" from="Hbox/MarginContainer/CheckBox" to="." method="_on_check_box_toggled"]

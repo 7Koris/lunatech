@@ -1,0 +1,25 @@
+[gd_scene load_steps=2 format=3 uid="uid://b074kj2mronxy"]
+
+[ext_resource type="Script" uid="uid://b7mjjsvvm6mps" path="res://assets/scripts/visual_display.gd" id="1_32dej"]
+
+[node name="VisualDisplay" type="Window"]
+mode = 3
+initial_position = 1
+size = Vector2i(500, 500)
+content_scale_aspect = 1
+script = ExtResource("1_32dej")
+
+[node name="PostProcessLayer" type="SubViewportContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+stretch = true
+
+[node name="SceneLayer" type="SubViewport" parent="PostProcessLayer"]
+handle_input_locally = false
+size = Vector2i(500, 500)
+render_target_update_mode = 4

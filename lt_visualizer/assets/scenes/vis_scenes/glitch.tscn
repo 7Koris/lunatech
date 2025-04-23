@@ -1,0 +1,41 @@
+[gd_scene load_steps=7 format=3 uid="uid://cbsmxdpyo0uvm"]
+
+[ext_resource type="Texture2D" uid="uid://cmlucfblqgcji" path="res://assets/sprites/icon.svg" id="1_cpxsu"]
+[ext_resource type="Script" uid="uid://bxf6j57um4fqb" path="res://assets/scripts/scene_scripts/glitch.gd" id="1_dnje3"]
+[ext_resource type="Shader" uid="uid://b3wwkport6fnr" path="res://assets/shaders/clouds.gdshader" id="2_fdrqj"]
+[ext_resource type="Shader" uid="uid://dvvkx1eoy1q2n" path="res://assets/shaders/glitch2d.gdshader" id="4_6me1c"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_dy7f4"]
+shader = ExtResource("2_fdrqj")
+shader_parameter/is_card = false
+shader_parameter/iTime = 1.0
+shader_parameter/mu = 0.1
+shader_parameter/iChannelResolution1 = Vector2(0, 0)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_lyl3d"]
+shader = ExtResource("4_6me1c")
+shader_parameter/shake_power = 0.0
+shader_parameter/shake_rate = 1.0
+shader_parameter/shake_speed = 5.0
+shader_parameter/shake_block_size = 30.5
+shader_parameter/shake_color_rate = 0.01
+shader_parameter/mu = 0.0
+
+[node name="Node2D" type="Node2D"]
+script = ExtResource("1_dnje3")
+
+[node name="ColorRect2" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_dy7f4")
+offset_right = 1167.0
+offset_bottom = 672.0
+color = Color(0, 0, 0, 1)
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+position = Vector2(559, 313)
+texture = ExtResource("1_cpxsu")
+
+[node name="ColorRect" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_lyl3d")
+offset_top = -10.0
+offset_right = 1166.0
+offset_bottom = 687.0

@@ -1,6 +1,7 @@
 [package]
 name = "lt_server"
 version = "0.1.0"
+authors = ["Koris"]
 edition = "2021"
 
 [[bin]]
@@ -22,3 +23,5 @@ rayon = "1.10.0"
 realfft = "3.4.0"
 rosc = "0.10.1"
 socket2 = "0.5.8"
+egui = "0.31.1"
+eframe = "0.31.1"

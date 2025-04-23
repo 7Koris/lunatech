@@ -1,0 +1,51 @@
+[gd_scene load_steps=10 format=3 uid="uid://ct5yyqk1liqrx"]
+
+[ext_resource type="Shader" uid="uid://dgucvasl2ncle" path="res://assets/shaders/moon.gdshader" id="1_6ldwj"]
+[ext_resource type="Texture2D" uid="uid://do0rkkqq5q3jv" path="res://assets/sprites/moon_false_color.png" id="2_6ldwj"]
+[ext_resource type="Texture2D" uid="uid://c78e486q7tvub" path="res://assets/sprites/ldem_64.jpg" id="3_dmxg3"]
+[ext_resource type="Script" uid="uid://orbxlbr1x4lm" path="res://assets/scripts/scene_scripts/heightmap.gd" id="4_smj0j"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_ujo5x"]
+sky_horizon_color = Color(0.662243, 0.671743, 0.686743, 1)
+ground_horizon_color = Color(0.662243, 0.671743, 0.686743, 1)
+
+[sub_resource type="Sky" id="Sky_xh7bh"]
+sky_material = SubResource("ProceduralSkyMaterial_ujo5x")
+
+[sub_resource type="Environment" id="Environment_qi3mi"]
+background_mode = 2
+sky = SubResource("Sky_xh7bh")
+tonemap_mode = 2
+glow_enabled = true
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_6ldwj"]
+render_priority = 0
+shader = ExtResource("1_6ldwj")
+shader_parameter/_a = ExtResource("2_6ldwj")
+shader_parameter/heightmap = ExtResource("3_dmxg3")
+shader_parameter/height_ratio = 0.1
+shader_parameter/start = 0.216
+shader_parameter/end = 0.24
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_phsbv"]
+size = Vector2(4, 2)
+subdivide_width = 256
+subdivide_depth = 256
+
+[node name="Node3D" type="Node3D"]
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(-0.931691, -0.314585, 0.181626, 0, 0.5, 0.866025, -0.363251, 0.806868, -0.465846, 0, 0, 0)
+shadow_enabled = true
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_qi3mi")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+material_override = SubResource("ShaderMaterial_6ldwj")
+mesh = SubResource("PlaneMesh_phsbv")
+script = ExtResource("4_smj0j")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.934503, 0.355955, 0, -0.355955, 0.934503, 0, 0.684778, 1.78401)
+current = true
