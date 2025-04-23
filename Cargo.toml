@@ -1,5 +1,5 @@
 [workspace]
 resolver = "2"
 members = [
-    "lt_server", "lt_client", "lt_visualizer", "lt_utilities", "testing",
+    "lt_server", "lt_client", "lt_utilities", "testing",
 ]
