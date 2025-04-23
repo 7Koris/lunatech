@@ -1,5 +1,4 @@
 use std::{error::Error, sync::Arc};
-use clap::error;
 use colored::Colorize;
 use crossbeam::channel::Sender;
 use cpal::{traits::{DeviceTrait, StreamTrait}, SampleRate, StreamConfig};
@@ -94,7 +93,7 @@ impl DeviceMonitor {
         
         let shared_sender = sender.clone();
 
-        let data_callback = move |sample_data: &[f32], _: &cpal::InputCallbackInfo| {
+        let data_callback = move |sample_data: &[f32], _: &cpal::InputCallbackInfo| {            
             analyzer.feed_data(sample_data);
             let tx = shared_sender.clone();
             let _ = tx.send((
@@ -125,7 +124,7 @@ impl DeviceMonitor {
     fn get_built_stream(&self, device: &cpal::Device, sample_rate: u32, buffer_size: u32) -> cpal::Stream {
         let config = &StreamConfig {
             channels: 
-                match  device.default_input_config() {
+                match device.default_input_config() {
                     Ok(config) => {
                         println!("Using default config {}", config.channels().to_string().bold().green());
                         config.channels()

@@ -1,12 +1,10 @@
 use std::env;
-use std::fmt::format;
 use std::thread;
 use clap::{value_parser, ArgAction};
 use colored::Colorize;
 use cpal::traits::HostTrait;
 use eframe::NativeOptions;
 use egui::{Button, Grid, Label, RichText, Vec2};
-use egui::{Ui, CentralPanel, TopBottomPanel, SidePanel, Window};
 
 use lt_server::device_monitor::DeviceMonitor;
 use lt_server::device_monitor;
@@ -155,6 +153,10 @@ fn main() {
     
     if let Some(device_monitor) = &mut device_monitor {
         device_monitor.start_device_monitor();
+    }
+
+    if lt_server_opts.headless {
+        thread::park();
     }
 
     let _ = eframe::run_native(
