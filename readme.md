@@ -66,10 +66,12 @@ When running in GUI mode, simply click the large circular button to start the se
 ## Roadmap
 
 - [x] Basic audio analysis
-- [x] OSC broadcasting 
+- [x] OSC broadcasting
 - [x] Basic GUI
 - [ ] Tempo Prediction
 - [ ] Automatic Gain Correction
+- [ ] More GUI settings
+- [ ] Unit Testing
 - [ ] Improved Github page and Developer docs
 - [ ] Windows support
 
