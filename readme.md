@@ -55,6 +55,7 @@ When running in GUI mode, simply click the large circular button to start the se
 ![GUI](docs/assets/gui.png)
 
 ### OSC Addresses
+
 - /lt/broad_range_rms
 - /lt/low_range_rms
 - /lt/mid_range_rms
