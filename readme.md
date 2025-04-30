@@ -85,3 +85,4 @@ Use this space to list resources you find helpful and would like to give credit 
 - [More About FFTs](https://www.ap.com/news/more-about-ffts)
 - [Magnitude and Phase Spectra](https://pages.jh.edu/signals/spectra/spectra.html)
 - [Understanding the FFT Algorithm](https://jakevdp.github.io/blog/2013/08/28/understanding-the-fft/)
+- [Readme Template](https://github.com/othneildrew/Best-README-Template)
