@@ -3,7 +3,8 @@ use std::thread;
 use clap::{value_parser, ArgAction};
 use colored::Colorize;
 use cpal::traits::HostTrait;
-use eframe::NativeOptions;
+use egui::Stroke;
+use egui::TextFormat;
 use egui::{Button, Grid, Label, RichText, Vec2};
 
 use lt_server::device_monitor::DeviceMonitor;
@@ -55,7 +56,13 @@ fn start_lt_server(lt_server_opts: &mut LTServerOpts, lt_server: &mut Option<Lun
         panic!("{}", "Failed to initialize and start server".bold().red());
     }
 
-    if let Some(device_monitor)  = lt_device_monitor { 
+    if let Some(device_monitor
+        <p align="right">(<a href="#readme-top">back to top</a>)</p>
+        
+        <!-- MARKDOWN LINKS & IMAGES -->
+        <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
+        
+        )  = lt_device_monitor { 
         device_monitor.set_thread_sender(tx);
         device_monitor.build_stream_from_device(&device).unwrap_or_else(|_| { 
             panic!("{}", "Failed to set device".bold().red().to_string()) 
@@ -87,7 +94,7 @@ fn main() {
     let matches = clap::Command::new("lunatech server")
         .version(env!("CARGO_PKG_VERSION"))
         .author("Koris")
-        .about("lorem ipsum dolor")
+        .about("Realtime audio analysis server")
         .arg(
             clap::Arg::new("sample_rate")
                 .short('r')
@@ -159,9 +166,16 @@ fn main() {
         thread::park();
     }
 
+    let native_opts = eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default().with_inner_size(egui::Vec2::new(500.0, 500.0)),
+        centered: true,
+        ..Default::default()
+    };
+
+
     let _ = eframe::run_native(
         env!("CARGO_PKG_NAME"),
-        NativeOptions::default(),
+         native_opts,
         Box::new(|_cc| Ok(Box::new(LTServerApp {
             restart_queued: false,
             lt_server: lt_server.take(),  
@@ -187,7 +201,6 @@ struct LTServerApp {
 
 impl eframe::App for LTServerApp {
     fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
-
         let mut no_errors = true; 
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.label(format!("LunaTech Server {}", env!("CARGO_PKG_VERSION")));
@@ -213,23 +226,39 @@ impl eframe::App for LTServerApp {
                     }
                 };
             });
-            
-            ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
-                if ui.add(egui::Checkbox::new(&mut self.lt_server_opts.input_mode, "Audio Input Mode")).changed() {
-                    self.restart_queued = true;
-                }
-            });
 
-            ui.label("Settings"); 
+            let format = TextFormat {
+                underline: Stroke {
+                    width: 1.0,
+                    color: egui::Color32::BLACK,
+                },
+                ..Default::default()
+            };
+
+            ui.add(Label::new(
+                RichText::new("Settings").color(egui::Color32::WHITE).strong(),
+            ));
+             
             ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
                
                 Grid::new("settings_grid")
                     .num_columns(3)
-                    .spacing([30.0, 10.0])
+                    .spacing([30.0, 0.0])
                     .show(ui, |ui| {
+
+                        ui.label("Audio Input Mode");  
+
+                       // ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
+                        if ui.add(egui::Checkbox::new(&mut self.lt_server_opts.input_mode, "")).changed() {
+                            self.restart_queued = true;
+                        }
+                        //});
+
+                        ui.end_row();
                         
                         ui.label("port");    
-                        ui.add_sized([100. ,0.], egui::TextEdit::singleline(&mut self.port_string)
+                        
+                        ui.add(egui::TextEdit::singleline(&mut self.port_string)
                             .hint_text(DEFAULT_PORT.to_string())
                         );
         
