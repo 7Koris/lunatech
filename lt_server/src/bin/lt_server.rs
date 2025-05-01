@@ -66,8 +66,10 @@ fn start_lt_server(lt_server_opts: &mut LTServerOpts, lt_server: &mut Option<Lun
     }
 
     lt_server_opts.lt_server_state = LTServerState::Running;
-    println!("{}{} {}", "Luna".red().bold(), "Tech".purple().bold(), "server is now running".bold()); 
-
+    println!("{}{} {}", "Luna".red().bold(), "Tech".purple().bold(), "server is now running".bold());
+    if let Some(lt_server) = lt_server {
+        lt_server.start_server();
+    }
 }
 
 fn stop_lt_server(lt_server_opts: &mut LTServerOpts, lt_server: &mut Option<server::LunaTechServer>, device_monitor: &mut Option<device_monitor::DeviceMonitor>) {
