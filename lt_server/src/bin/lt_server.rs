@@ -56,13 +56,7 @@ fn start_lt_server(lt_server_opts: &mut LTServerOpts, lt_server: &mut Option<Lun
         panic!("{}", "Failed to initialize and start server".bold().red());
     }
 
-    if let Some(device_monitor
-        <p align="right">(<a href="#readme-top">back to top</a>)</p>
-        
-        <!-- MARKDOWN LINKS & IMAGES -->
-        <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-        
-        )  = lt_device_monitor { 
+    if let Some(device_monitor)  = lt_device_monitor { 
         device_monitor.set_thread_sender(tx);
         device_monitor.build_stream_from_device(&device).unwrap_or_else(|_| { 
             panic!("{}", "Failed to set device".bold().red().to_string()) 
