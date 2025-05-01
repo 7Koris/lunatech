@@ -52,9 +52,10 @@ Options:
 
 When running in GUI mode, simply click the large circular button to start the server. Settings that are changed will be applied when you click the "Update Settings" button.
 
-![GUI](image.png)
+![GUI](docs/assets/gui.png)
 
 ### OSC Addresses
+
 - /lt/broad_range_rms
 - /lt/low_range_rms
 - /lt/mid_range_rms
@@ -66,10 +67,12 @@ When running in GUI mode, simply click the large circular button to start the se
 ## Roadmap
 
 - [x] Basic audio analysis
-- [x] OSC broadcasting 
+- [x] OSC broadcasting
 - [x] Basic GUI
 - [ ] Tempo Prediction
 - [ ] Automatic Gain Correction
+- [ ] More GUI settings
+- [ ] Unit Testing
 - [ ] Improved Github page and Developer docs
 - [ ] Windows support
 
@@ -85,3 +88,4 @@ Use this space to list resources you find helpful and would like to give credit 
 - [More About FFTs](https://www.ap.com/news/more-about-ffts)
 - [Magnitude and Phase Spectra](https://pages.jh.edu/signals/spectra/spectra.html)
 - [Understanding the FFT Algorithm](https://jakevdp.github.io/blog/2013/08/28/understanding-the-fft/)
+- [Readme Template](https://github.com/othneildrew/Best-README-Template)
