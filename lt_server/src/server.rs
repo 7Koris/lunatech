@@ -4,8 +4,7 @@ use rosc::{encoder, OscBundle, OscError, OscMessage, OscPacket, OscTime, OscType
 use socket2::{Domain, Protocol, SockAddr, Socket, Type};
 use crossbeam::channel::Receiver;
 
-use lt_utilities::{audio_features::Features, OscAddresses};
-
+use lt_utilities::audio_features::{Features, OSC_ADDR_BROADRANGERMS, OSC_ADDR_FLUX, OSC_ADDR_HIGHRANGERMS, OSC_ADDR_LOWRANGERMS, OSC_ADDR_MIDRANGERMS, OSC_ADDR_SPECTRALCENTROID, OSC_ADDR_ZCR};
 
 pub struct LunaTechServer {
     socket: Arc<Socket>,
@@ -68,7 +67,13 @@ impl LunaTechServer {
     }
 
 fn features_to_osc(features: Features, secs: u32, frac: u32) -> Result<Vec<u8>, OscError> {
-    let (broad_range_peak_rms, low_range_rms, mid_range_rms, high_range_rms) = features;
+    let (broad_range_rms, 
+        low_range_rms, 
+        mid_range_rms, 
+        high_range_rms, 
+        zcr, 
+        spectral_centroid, 
+        flux) = features;
 
     encoder::encode(&OscPacket::Bundle(OscBundle {
         timetag: {
@@ -76,27 +81,45 @@ fn features_to_osc(features: Features, secs: u32, frac: u32) -> Result<Vec<u8>, 
         },
         content: vec![
             OscPacket::Message(OscMessage {
-                addr: OscAddresses::BROAD_RMS.to_string(),
+                addr: OSC_ADDR_BROADRANGERMS.to_string(),
                 args: vec![
-                    OscType::Float(broad_range_peak_rms),
+                    OscType::Float(broad_range_rms),
                 ],
             }),
             OscPacket::Message(OscMessage {
-                addr: OscAddresses::LOW_RMS.to_string(),
+                addr: OSC_ADDR_LOWRANGERMS.to_string(),
                 args: vec![
                     OscType::Float(low_range_rms),
                 ],
             }),
             OscPacket::Message(OscMessage {
-                addr: OscAddresses::MID_RMS.to_string(),
+                addr: OSC_ADDR_MIDRANGERMS.to_string(),
                 args: vec![
                     OscType::Float(mid_range_rms),
                 ],
             }),
             OscPacket::Message(OscMessage {
-                addr: OscAddresses::HIGH_RMS.to_string(),
+                addr: OSC_ADDR_HIGHRANGERMS.to_string(),
                 args: vec![
                     OscType::Float(high_range_rms),
+                ],
+            }),
+            OscPacket::Message(OscMessage {
+                addr: OSC_ADDR_ZCR.to_string(),
+                args: vec![
+                    OscType::Float(zcr),
+                ],
+            }),
+            OscPacket::Message(OscMessage {
+                addr: OSC_ADDR_SPECTRALCENTROID.to_string(),
+                args: vec![
+                    OscType::Float(spectral_centroid),
+                ],
+            }),
+            OscPacket::Message(OscMessage {
+                addr: OSC_ADDR_FLUX.to_string(),
+                args: vec![
+                    OscType::Float(flux),
                 ],
             }),
         ],

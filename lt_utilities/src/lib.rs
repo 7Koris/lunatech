@@ -11,13 +11,13 @@ macro_rules! ArcMutex {
     };
 }
 
-type OscAddress = &'static str;
-pub struct OscAddresses {}
-impl OscAddresses {
-    pub const BROAD_RMS: OscAddress = "/lt/broad_rms";
-    pub const LOW_RMS: OscAddress = "/lt/low_rms";
-    pub const MID_RMS: OscAddress = "/lt/mid_rms";
-    pub const HIGH_RMS: OscAddress = "/lt/high_rms";
-}
+// pub struct OscAddresses {}
+// impl OscAddresses {
+//     pub const BROAD_RMS: OscAddress = "/lt/broad_rms";
+//     pub const LOW_RMS: OscAddress = "/lt/low_rms";
+//     pub const MID_RMS: OscAddress = "/lt/mid_rms";
+//     pub const HIGH_RMS: OscAddress = "/lt/high_rms";
+//     pub const ZCR: OscAddress = "/lt/zcr";
+// }
 
 

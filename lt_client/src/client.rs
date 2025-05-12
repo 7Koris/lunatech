@@ -2,10 +2,9 @@ use std::mem::{self, MaybeUninit};
 use std::net::{Ipv4Addr, SocketAddrV4};
 use std::sync::Arc;
 use std::thread;
-use lt_utilities::audio_features::AtomicAudioFeatures;
+use lt_utilities::audio_features::{AtomicAudioFeatures, OSC_ADDR_BROADRANGERMS, OSC_ADDR_FLUX, OSC_ADDR_HIGHRANGERMS, OSC_ADDR_LOWRANGERMS, OSC_ADDR_MIDRANGERMS, OSC_ADDR_SPECTRALCENTROID, OSC_ADDR_ZCR};
 use rosc::OscPacket;
 use socket2::{Domain, Protocol, SockAddr, Socket, Type};
-use lt_utilities::OscAddresses;
 
 pub struct LunaTechClient {
     socket: Arc<Socket>,
@@ -66,17 +65,26 @@ impl LunaTechClient {
                         if let OscPacket::Message(msg) = packet {
                             if let Some(val) = <rosc::OscType as Clone>::clone(&msg.args[0]).float() {
                                 match msg.addr.as_str() {
-                                    OscAddresses::BROAD_RMS => {
-                                        audio_features.broad_range_peak_rms.set(val);
+                                   OSC_ADDR_BROADRANGERMS => {
+                                        audio_features.broad_range_rms.set(val);
                                     }
-                                    OscAddresses::LOW_RMS => {
+                                   OSC_ADDR_LOWRANGERMS => {
                                         audio_features.low_range_rms.set(val);
                                     }
-                                    OscAddresses::MID_RMS => {
+                                    OSC_ADDR_MIDRANGERMS=> {
                                         audio_features.mid_range_rms.set(val);
                                     }
-                                    OscAddresses::HIGH_RMS => {
+                                    OSC_ADDR_HIGHRANGERMS => {
                                         audio_features.high_range_rms.set(val);
+                                    }
+                                    OSC_ADDR_ZCR => {
+                                        audio_features.zcr.set(val);
+                                    }
+                                    OSC_ADDR_SPECTRALCENTROID => {
+                                        audio_features.spectral_centroid.set(val);
+                                    }
+                                    OSC_ADDR_FLUX => {
+                                        audio_features.flux.set(val);
                                     }
                                     _ => {}
                                 }

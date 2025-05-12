@@ -15,6 +15,7 @@ pub struct DeviceMonitor {
     /// The data stream of the device
     stream: Option<cpal::Stream>,
     tx: Option<Arc<Sender<Features>>>,
+    error_msg: Option<String>,
 }
 
 impl DeviceMonitor {
@@ -26,6 +27,7 @@ impl DeviceMonitor {
             device_name: None,
             stream: None,
             tx: None,
+            error_msg: None,
         }
     }
 
@@ -91,14 +93,17 @@ impl DeviceMonitor {
         
         let shared_sender = sender.clone();
 
-        let data_callback = move |sample_data: &[f32], _: &cpal::InputCallbackInfo| {
+        let data_callback = move |sample_data: &[f32], _: &cpal::InputCallbackInfo| {            
             analyzer.feed_data(sample_data);
             let tx = shared_sender.clone();
             let _ = tx.send((
-                analyzer.audio_features.broad_range_peak_rms.get(),
+                analyzer.audio_features.broad_range_rms.get(),
                 analyzer.audio_features.low_range_rms.get(),
                 analyzer.audio_features.mid_range_rms.get(),
                 analyzer.audio_features.high_range_rms.get(),
+                analyzer.audio_features.zcr.get(),
+                analyzer.audio_features.spectral_centroid.get(),
+                analyzer.audio_features.flux.get(),
             ));
         };
 
@@ -119,7 +124,7 @@ impl DeviceMonitor {
     fn get_built_stream(&self, device: &cpal::Device, sample_rate: u32, buffer_size: u32) -> cpal::Stream {
         let config = &StreamConfig {
             channels: 
-                match  device.default_input_config() {
+                match device.default_input_config() {
                     Ok(config) => {
                         println!("Using default config {}", config.channels().to_string().bold().green());
                         config.channels()

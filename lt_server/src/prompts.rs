@@ -22,6 +22,11 @@ fn prompt_user_input(patterns: &[String], prompt: String) -> String {
     }
 }
 
+pub fn get_default_device() -> cpal::Device {
+    let host = cpal::default_host();
+    host.default_output_device().expect("Failed to get default output device")
+}
+
 pub fn select_device_by_prompt(host: &cpal::Host) -> cpal::Device{
     let _print_gag = Gag::stderr();
  

@@ -1,6 +1,7 @@
 [package]
 name = "lt_server"
 version = "0.1.0"
+authors = ["Koris"]
 edition = "2021"
 
 [[bin]]
@@ -15,10 +16,12 @@ opt-level = 2
 lt_utilities = { path = "../lt_utilities" }
 clap = "4.5.28"
 colored = "3.0.0"
-cpal = { version = "0.15.3", features = ["jack"] }
+cpal = { version = "0.15.3", features = ["jack", "asio"] }
 crossbeam = "0.8.4"
 gag = "1.0.0"
 rayon = "1.10.0"
 realfft = "3.4.0"
 rosc = "0.10.1"
 socket2 = "0.5.8"
+egui = "0.31.1"
+eframe = "0.31.1"
