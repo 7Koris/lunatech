@@ -161,7 +161,6 @@ impl Analyzer {
         } else {
             vec![None]
         };
-        
         let channel_features: Vec<Features> = channel_features.into_iter().flatten().collect();
         self.audio_features.broad_range_rms.set((channel_features.iter().map(|x| x.0).sum::<f32>() / self.channel_count as f32).clamp(0., 1.));
         self.audio_features.low_range_rms.set((channel_features.iter().map(|x| x.1).sum::<f32>() / self.channel_count as f32).clamp(0., 1.));

@@ -8,9 +8,11 @@
 <br />
 <div align="center">
   <h3 align="center">LunaTech</h3>
+  <img src="lunatechsmall.png" alt="i"> 
   <p align="center">
     a solution for powering realtime audio visualizations
   </p>
+
 </div>
 
 <!-- ABOUT THE PROJECT -->
