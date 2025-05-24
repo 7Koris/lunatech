@@ -84,8 +84,6 @@ Distributed under the MIT License. See `LICENSE.txt` for more information.
 
 ## Acknowledgments
 
-Use this space to list resources you find helpful and would like to give credit to. I've included a few of my favorites to kick things off!
-
 - [The rust audio community](https://rust.audio/)
 - [More About FFTs](https://www.ap.com/news/more-about-ffts)
 - [Magnitude and Phase Spectra](https://pages.jh.edu/signals/spectra/spectra.html)
