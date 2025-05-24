@@ -24,6 +24,21 @@ impl LunaTechServer {
         Self { socket: socket.into(), addrs, rx: None}
     }
 
+    // Currently unused
+    pub fn start_heartbeat_thread(&self) {
+        let socket = self.socket.clone();
+        let addrs = self.addrs.clone();
+        thread::spawn(move || {
+            loop {
+                let current_time_ms = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis();
+                let data = format!("{{\"host\":\"lt\",\"time\":{}}}", current_time_ms); 
+                let utf8_buffer = data.as_bytes();
+                let _ = socket.send_to(&utf8_buffer, &addrs);
+                thread::sleep(Duration::from_millis(60));
+            }
+        });
+    }
+
     pub fn set_thread_receiver(&mut self, rx: Receiver<Features>) {
         self.rx = Some(rx.into());
     }
@@ -40,7 +55,9 @@ impl LunaTechServer {
             Some(receiver) => receiver, 
             None => panic!("Cannot start server without data input channel"),
         };
-        
+
+        // self.start_heartbeat_thread();
+
         let rx = receiver.clone(); 
         thread::spawn(move || {
             let start_time: std::time::Instant = std::time::Instant::now();
@@ -65,6 +82,7 @@ impl LunaTechServer {
         }});  
         }
     }
+
 
 fn features_to_osc(features: Features, secs: u32, frac: u32) -> Result<Vec<u8>, OscError> {
     let (broad_range_rms, 
