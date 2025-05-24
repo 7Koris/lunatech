@@ -98,7 +98,7 @@ impl DeviceMonitor {
             analyzer.feed_data(sample_data);
             let tx = shared_sender.clone();
             let _ = tx.send((
-                analyzer.audio_features.broad_range_rms.get(),
+                analyzer.audio_features.rms.get(),
                 analyzer.audio_features.low_range_rms.get(),
                 analyzer.audio_features.mid_range_rms.get(),
                 analyzer.audio_features.high_range_rms.get(),
