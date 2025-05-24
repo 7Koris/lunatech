@@ -1,4 +1,4 @@
-use std::{net::{ Ipv4Addr, SocketAddr}, sync::Arc, thread, time::{Duration, UNIX_EPOCH}};
+use std::{net::{ Ipv4Addr, SocketAddr}, sync::{Arc, Mutex}, thread, time::{Duration, Instant, UNIX_EPOCH}};
 use colored::Colorize;
 use rosc::{encoder, OscBundle, OscError, OscMessage, OscPacket, OscTime, OscType};
 use socket2::{Domain, Protocol, SockAddr, Socket, Type};
@@ -10,6 +10,7 @@ pub struct LunaTechServer {
     socket: Arc<Socket>,
     addrs: SockAddr,
     rx: Option<Arc<Receiver<Features>>>,
+    thread_terminator: Arc<Mutex<bool>>,
 }
 
 impl LunaTechServer {
@@ -21,7 +22,7 @@ impl LunaTechServer {
         let addrs: SocketAddr = SocketAddr::new(Ipv4Addr::BROADCAST.into(), port);
         let addrs: SockAddr = SockAddr::from(addrs);
         
-        Self { socket: socket.into(), addrs, rx: None}
+        Self { socket: socket.into(), addrs, rx: None, thread_terminator: Arc::new(false.into())}
     }
 
     // Currently unused
@@ -43,6 +44,10 @@ impl LunaTechServer {
         self.rx = Some(rx.into());
     }
 
+    pub fn stop_server(&mut self) {
+        *self.thread_terminator.lock().unwrap() = true;
+    }
+
     pub fn start_server(&self) {
         if self.rx.is_none() {
             panic!("Cannot start server without data input channel");
@@ -57,13 +62,19 @@ impl LunaTechServer {
         };
 
         // self.start_heartbeat_thread();
-
+        let thread_terminator_ref = self.thread_terminator.clone();
         let rx = receiver.clone(); 
+        let time = Instant::now();
         thread::spawn(move || {
             let start_time: std::time::Instant = std::time::Instant::now();
             let epoch_start: Duration = UNIX_EPOCH.elapsed().unwrap_or(Duration::from_secs(0));
             let mut audio_features: Result<Features, crossbeam::channel::RecvError>;
             loop {
+                // TODO: handle unwraps better?
+                if *thread_terminator_ref.lock().unwrap() {
+                    break;
+                }
+
                 audio_features = rx.recv();
                 if let Ok(features) = audio_features {
                     let secs = (epoch_start.as_secs() + start_time.elapsed().as_secs()) as u32;
@@ -80,6 +91,7 @@ impl LunaTechServer {
                 }
          
         }});  
+        
         }
     }
 

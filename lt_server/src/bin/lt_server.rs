@@ -37,6 +37,9 @@ fn start_lt_server(lt_server_opts: &mut LTServerOpts, lt_server: &mut Option<Lun
         return;
     }
 
+    // TODO: Take old lt_server object and set Arc variable to kill old threads
+    // TODO: Same for lt_device_monitor
+
     let host = cpal::default_host();
     let device = if lt_server_opts.input_mode {
         host.default_input_device()
@@ -73,6 +76,10 @@ fn start_lt_server(lt_server_opts: &mut LTServerOpts, lt_server: &mut Option<Lun
 }
 
 fn stop_lt_server(lt_server_opts: &mut LTServerOpts, lt_server: &mut Option<server::LunaTechServer>, device_monitor: &mut Option<device_monitor::DeviceMonitor>) {
+    if let Some(server) = lt_server {
+        server.stop_server();
+    }
+    
     if lt_server_opts.lt_server_state == LTServerState::Stopped {
         println!("{}", "Server is already stopped, please start it first".bold().red());
         return;
@@ -313,6 +320,7 @@ impl eframe::App for LTServerApp {
                 }
             });
 
+            // Handle restart
             if self.restart_queued {
                 self.restart_queued = false;
 
