@@ -77,12 +77,14 @@ impl Analyzer {
         assert!(self.channel_count > 0);
 
         let channels: ArcMutex<Vec<Vec<f32>>> = ArcMutex!(Vec::new());
+        // Iterate for each channel and collect every nth element
+        // Separates interleaved audio data into separate channels
         (0..self.channel_count)
             .collect::<Vec<u16>>()
             .par_iter()
             .for_each(|channel_index| {
                 let channel_data = data
-                    .iter()
+                    .par_iter()
                     .skip(*channel_index as usize)
                     .cloned()
                     .collect::<Vec<f32>>();
@@ -95,7 +97,7 @@ impl Analyzer {
         let channel_lock = channels.lock();
         let channel_features = if let Ok(channels) = channel_lock {
             let result: Vec<Option<Features>> = channels
-                .iter()
+                .par_iter()
                 .enumerate()
                 .map(|(channel_index, channel_data)| {
                     if let Ok(mut fft_planner) = self.fft_planner.lock() {
@@ -112,8 +114,8 @@ impl Analyzer {
 
                         // |a| / (b^2 + w^2)^1/2, let |a| = 1 (https://pages.jh.edu/signals/spectra/spectra.html)
                         let size = spectrum_vec.len() as f32;
-                        let broad_range_magnitudes = spectrum_vec
-                            .iter()
+                        let magnitudes = spectrum_vec
+                            .par_iter()
                             .map(|x| {
                                 let a = x.norm_sqr();
 
@@ -126,8 +128,8 @@ impl Analyzer {
                             })
                             .collect::<Vec<f32>>();
 
-                        let broad_range_magnitudes_log_compressed = broad_range_magnitudes
-                            .iter()
+                        let magnitudes_log_compressed = magnitudes
+                            .par_iter()
                             .map(|x| {
                                 (1.0 + x).log(10.0) / 1.0 // Log-Compression step, no GAMMA
                             })
@@ -135,31 +137,31 @@ impl Analyzer {
 
                         //  https://www.ap.com/news/more-about-ffts (getting frequencies)
                         let bin_size = (self.sample_rate as f32) / (spectrum_vec.len() as f32);
-                        let freqs = &broad_range_magnitudes
-                            .iter()
+                        let freqs = &magnitudes
+                            .par_iter()
                             .enumerate()
                             .map(|(i, &_)| bin_size * (i as f32))
                             .collect::<Vec<f32>>();
 
                         let low_range_magnitudes = get_filtered_by_range(
-                            broad_range_magnitudes_log_compressed.as_slice(),
+                            magnitudes_log_compressed.as_slice(),
                             freqs.as_slice(),
                             LOW_RANGE
                         );
                         let mid_range_magnitudes = get_filtered_by_range(
-                            broad_range_magnitudes_log_compressed.as_slice(),
+                            magnitudes_log_compressed.as_slice(),
                             freqs.as_slice(),
                             MID_RANGE
                         );
                         let high_range_magnitudes = get_filtered_by_range(
-                            broad_range_magnitudes_log_compressed.as_slice(),
+                            magnitudes_log_compressed.as_slice(),
                             freqs.as_slice(),
                             HIGH_RANGE
                         );
 
                         let zcr = compute_zcr(channel_data);
                         let spectral_centroid = compute_spectral_centroid(
-                            broad_range_magnitudes.as_slice(),
+                            magnitudes.as_slice(),
                             freqs.as_slice()
                         );
 
@@ -169,27 +171,27 @@ impl Analyzer {
                             .unwrap()
                             .lock()
                             .unwrap();
-                        let last_frame = last_buf.iter().cloned().collect::<Vec<f32>>();
+                        let last_frame = last_buf.par_iter().cloned().collect::<Vec<f32>>();
                         last_buf.clear();
                         last_buf.extend(channel_data.iter().cloned());
 
                         // check which vec is longer and cut it down to the length of the shorter one
-                        let broad_length = broad_range_magnitudes.len();
+                        let broad_length = magnitudes.len();
                         let last_frame_length = last_frame.len();
-                        let broad_slice: &[f32] = &broad_range_magnitudes
+                        let broad_slice: &[f32] = &magnitudes
                             [..std::cmp::min(broad_length, last_frame_length)];
                         let last_frame_slice: &[f32] = &last_frame
                             [..std::cmp::min(broad_length, last_frame_length)];
 
                         let flux = broad_slice
-                            .iter()
+                            .par_iter()
                             .enumerate()
                             .map(|(i, &x)| { (x - last_frame_slice[i]).powf(2.0) })
                             .sum::<f32>()
                             .sqrt();
 
                         Some((
-                            compute_rms(&broad_range_magnitudes_log_compressed) / 2.0,
+                            compute_rms(&magnitudes_log_compressed) / 2.0,
                             compute_rms(&low_range_magnitudes) / 2.0,
                             compute_rms(&mid_range_magnitudes) / 2.0,
                             compute_rms(&high_range_magnitudes) / 2.0,
@@ -210,7 +212,7 @@ impl Analyzer {
         self.audio_features.rms.set(
             (
                 channel_features
-                    .iter()
+                    .par_iter()
                     .map(|x| x.0)
                     .sum::<f32>() / (self.channel_count as f32)
             ).clamp(0.0, 1.0)
@@ -218,7 +220,7 @@ impl Analyzer {
         self.audio_features.low_range_rms.set(
             (
                 channel_features
-                    .iter()
+                    .par_iter()
                     .map(|x| x.1)
                     .sum::<f32>() / (self.channel_count as f32)
             ).clamp(0.0, 1.0)
@@ -226,7 +228,7 @@ impl Analyzer {
         self.audio_features.mid_range_rms.set(
             (
                 channel_features
-                    .iter()
+                    .par_iter()
                     .map(|x| x.2)
                     .sum::<f32>() / (self.channel_count as f32)
             ).clamp(0.0, 1.0)
@@ -234,37 +236,35 @@ impl Analyzer {
         self.audio_features.high_range_rms.set(
             (
                 channel_features
-                    .iter()
+                    .par_iter()
                     .map(|x| x.3)
                     .sum::<f32>() / (self.channel_count as f32)
             ).clamp(0.0, 1.0)
         );
         self.audio_features.spectral_centroid.set(
             channel_features
-                .iter()
+                .par_iter()
                 .map(|x| x.5)
                 .sum::<f32>() / (self.channel_count as f32)
         );
         self.audio_features.zcr.set(
             channel_features
-                .iter()
+                .par_iter()
                 .map(|x| x.4)
                 .sum::<f32>() / (self.channel_count as f32)
         );
         self.audio_features.flux.set(
             channel_features
-                .iter()
+                .par_iter()
                 .map(|x| x.6)
                 .sum::<f32>() / (self.channel_count as f32)
         );
-
-        println!("{}", self.audio_features.rms.get());
     }
 }
 
 pub fn compute_rms(magnitudes: &[f32]) -> f32 {
     let sum: f32 = magnitudes
-        .iter()
+        .par_iter()
         .map(|x| x.powf(2.0))
         .sum();
     let mean = sum / (magnitudes.len() as f32);
@@ -273,21 +273,17 @@ pub fn compute_rms(magnitudes: &[f32]) -> f32 {
 
 pub fn compute_peak_rms(magnitudes: &[f32]) -> f32 {
     let sum: f32 = magnitudes
-        .iter()
+        .par_iter()
         .map(|x| x.powf(2.0))
         .sum();
     let mean = sum / (magnitudes.len() as f32);
     mean.sqrt() * f32::sqrt(2.0)
 }
 
-// pub fn compute_fundamental_frequency(spec_values: &[f32], freqs: &[f32]) -> f32 {
-//     let peak_index =
-//     freqs[peak_index] // * 2.0
-// }
-
 pub fn get_filtered_by_range(spec_values: &[f32], freqs: &[f32], range: Range<f32>) -> Vec<f32> {
+    // TODO: parallelize
     spec_values
-        .iter()
+        .par_iter()
         .enumerate()
         .filter_map(|(i, &mag)| {
             if range.contains(&freqs[i]) { Some(mag) } else { None }
@@ -295,6 +291,8 @@ pub fn get_filtered_by_range(spec_values: &[f32], freqs: &[f32], range: Range<f3
         .collect::<Vec<f32>>()
 }
 
+// Unused
+// TODO: Improve and or parallelize?
 pub fn get_normalized_mags(magnitudes: &[f32]) -> Vec<f32> {
     let minx = magnitudes.iter().fold(f32::INFINITY, |acc, x| acc.min(*x));
     let maxx = magnitudes.iter().fold(f32::NEG_INFINITY, |acc, x| acc.max(*x));
