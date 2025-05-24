@@ -15,6 +15,7 @@ pub struct DeviceMonitor {
     /// The data stream of the device
     stream: Option<cpal::Stream>,
     tx: Option<Arc<Sender<Features>>>,
+    // TODO: Ensure Proper error passing
     error_msg: Option<String>,
 }
 
@@ -137,8 +138,6 @@ impl DeviceMonitor {
             sample_rate: SampleRate(sample_rate), 
             buffer_size: cpal::BufferSize::Fixed(buffer_size),
         };
-
-        
 
         match self.try_building_stream(device, config) {
             Ok(new_stream) => new_stream,
