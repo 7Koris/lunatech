@@ -1,8 +1,8 @@
-use std::sync::{atomic::{Ordering}, Arc};
+use std::sync::{ atomic::{ Ordering }, Arc };
 
 use crate::atomic_float;
 
-atomic_float!(BroadRangeRMS);
+atomic_float!(RMS);
 atomic_float!(LowRangeRMS);
 atomic_float!(MidRangeRMS);
 atomic_float!(HighRangeRMS);
@@ -10,10 +10,10 @@ atomic_float!(ZCR);
 atomic_float!(SpectralCentroid);
 atomic_float!(Flux);
 
-pub type Features = (BroadRangeRMS, LowRangeRMS, MidRangeRMS, HighRangeRMS, ZCR, SpectralCentroid, Flux);
+pub type Features = (RMS, LowRangeRMS, MidRangeRMS, HighRangeRMS, ZCR, SpectralCentroid, Flux);
 
 pub struct AtomicAudioFeatures {
-    pub broad_range_rms: Arc<BroadRangeRMSAtomic>,
+    pub rms: Arc<RMSAtomic>,
     pub low_range_rms: Arc<LowRangeRMSAtomic>,
     pub mid_range_rms: Arc<MidRangeRMSAtomic>,
     pub high_range_rms: Arc<HighRangeRMSAtomic>,
@@ -25,7 +25,7 @@ pub struct AtomicAudioFeatures {
 impl Default for AtomicAudioFeatures {
     fn default() -> Self {
         Self {
-            broad_range_rms: Arc::new(BroadRangeRMSAtomic::new(0.0)),
+            rms: Arc::new(RMSAtomic::new(0.0)),
             low_range_rms: Arc::new(LowRangeRMSAtomic::new(0.0)),
             mid_range_rms: Arc::new(MidRangeRMSAtomic::new(0.0)),
             high_range_rms: Arc::new(HighRangeRMSAtomic::new(0.0)),

@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{ Arc, Mutex };
 
 pub mod atomic_float;
 pub mod audio_features;
@@ -19,5 +19,3 @@ macro_rules! ArcMutex {
 //     pub const HIGH_RMS: OscAddress = "/lt/high_rms";
 //     pub const ZCR: OscAddress = "/lt/zcr";
 // }
-
-

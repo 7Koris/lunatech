@@ -1,10 +1,24 @@
-use std::{net::{ Ipv4Addr, SocketAddr}, sync::{Arc, Mutex}, thread, time::{Duration, Instant, UNIX_EPOCH}};
+use std::{
+    net::{ Ipv4Addr, SocketAddr },
+    sync::{ Arc, Mutex },
+    thread,
+    time::{ Duration, Instant, UNIX_EPOCH },
+};
 use colored::Colorize;
-use rosc::{encoder, OscBundle, OscError, OscMessage, OscPacket, OscTime, OscType};
-use socket2::{Domain, Protocol, SockAddr, Socket, Type};
+use rosc::{ encoder, OscBundle, OscError, OscMessage, OscPacket, OscTime, OscType };
+use socket2::{ Domain, Protocol, SockAddr, Socket, Type };
 use crossbeam::channel::Receiver;
 
-use lt_utilities::audio_features::{Features, OSC_ADDR_BROADRANGERMS, OSC_ADDR_FLUX, OSC_ADDR_HIGHRANGERMS, OSC_ADDR_LOWRANGERMS, OSC_ADDR_MIDRANGERMS, OSC_ADDR_SPECTRALCENTROID, OSC_ADDR_ZCR};
+use lt_utilities::audio_features::{
+    Features,
+    OSC_ADDR_RMS,
+    OSC_ADDR_FLUX,
+    OSC_ADDR_HIGHRANGERMS,
+    OSC_ADDR_LOWRANGERMS,
+    OSC_ADDR_MIDRANGERMS,
+    OSC_ADDR_SPECTRALCENTROID,
+    OSC_ADDR_ZCR,
+};
 
 pub struct LunaTechServer {
     socket: Arc<Socket>,
@@ -15,14 +29,16 @@ pub struct LunaTechServer {
 
 impl LunaTechServer {
     pub fn new(port: u16) -> Self {
-        let socket: Socket = Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::UDP)).expect("Failed to create socket");
+        let socket: Socket = Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::UDP)).expect(
+            "Failed to create socket"
+        );
         socket.set_broadcast(true).expect("Failed to set broadcast");
         socket.set_reuse_address(true).expect("Failed to set reuse address");
 
         let addrs: SocketAddr = SocketAddr::new(Ipv4Addr::BROADCAST.into(), port);
         let addrs: SockAddr = SockAddr::from(addrs);
-        
-        Self { socket: socket.into(), addrs, rx: None, thread_terminator: Arc::new(false.into())}
+
+        Self { socket: socket.into(), addrs, rx: None, thread_terminator: Arc::new(false.into()) }
     }
 
     // Currently unused
@@ -31,8 +47,12 @@ impl LunaTechServer {
         let addrs = self.addrs.clone();
         thread::spawn(move || {
             loop {
-                let current_time_ms = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis();
-                let data = format!("{{\"host\":\"lt\",\"time\":{}}}", current_time_ms); 
+                let current_time_ms = std::time::SystemTime
+                    ::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_millis();
+                let data = format!("{{\"host\":\"lt\",\"time\":{}}}", current_time_ms);
                 let utf8_buffer = data.as_bytes();
                 let _ = socket.send_to(&utf8_buffer, &addrs);
                 thread::sleep(Duration::from_millis(60));
@@ -57,13 +77,13 @@ impl LunaTechServer {
         let socket = self.socket.clone();
 
         let receiver = match &self.rx {
-            Some(receiver) => receiver, 
+            Some(receiver) => receiver,
             None => panic!("Cannot start server without data input channel"),
         };
 
         // self.start_heartbeat_thread();
         let thread_terminator_ref = self.thread_terminator.clone();
-        let rx = receiver.clone(); 
+        let rx = receiver.clone();
         let time = Instant::now();
         thread::spawn(move || {
             let start_time: std::time::Instant = std::time::Instant::now();
@@ -82,76 +102,60 @@ impl LunaTechServer {
                     if let Ok(buf) = features_to_osc(features, secs, frac) {
                         let result = socket.send_to(&buf, &addrs);
                         match result {
-                            Ok(_) => {},
+                            Ok(_) => {}
                             Err(e) => {
-                                println!("Error sending audio features: {}", e.to_string().bold().red());
+                                println!(
+                                    "Error sending audio features: {}",
+                                    e.to_string().bold().red()
+                                );
                             }
                         }
                     }
                 }
-         
-        }});  
-        
-        }
+            }
+        });
     }
-
+}
 
 fn features_to_osc(features: Features, secs: u32, frac: u32) -> Result<Vec<u8>, OscError> {
-    let (broad_range_rms, 
-        low_range_rms, 
-        mid_range_rms, 
-        high_range_rms, 
-        zcr, 
-        spectral_centroid, 
-        flux) = features;
+    let (rms, low_range_rms, mid_range_rms, high_range_rms, zcr, spectral_centroid, flux) =
+        features;
 
-    encoder::encode(&OscPacket::Bundle(OscBundle {
-        timetag: {
-            OscTime::from((secs, frac))
-        },
-        content: vec![
-            OscPacket::Message(OscMessage {
-                addr: OSC_ADDR_BROADRANGERMS.to_string(),
-                args: vec![
-                    OscType::Float(broad_range_rms),
-                ],
-            }),
-            OscPacket::Message(OscMessage {
-                addr: OSC_ADDR_LOWRANGERMS.to_string(),
-                args: vec![
-                    OscType::Float(low_range_rms),
-                ],
-            }),
-            OscPacket::Message(OscMessage {
-                addr: OSC_ADDR_MIDRANGERMS.to_string(),
-                args: vec![
-                    OscType::Float(mid_range_rms),
-                ],
-            }),
-            OscPacket::Message(OscMessage {
-                addr: OSC_ADDR_HIGHRANGERMS.to_string(),
-                args: vec![
-                    OscType::Float(high_range_rms),
-                ],
-            }),
-            OscPacket::Message(OscMessage {
-                addr: OSC_ADDR_ZCR.to_string(),
-                args: vec![
-                    OscType::Float(zcr),
-                ],
-            }),
-            OscPacket::Message(OscMessage {
-                addr: OSC_ADDR_SPECTRALCENTROID.to_string(),
-                args: vec![
-                    OscType::Float(spectral_centroid),
-                ],
-            }),
-            OscPacket::Message(OscMessage {
-                addr: OSC_ADDR_FLUX.to_string(),
-                args: vec![
-                    OscType::Float(flux),
-                ],
-            }),
-        ],
-    }))
+    encoder::encode(
+        &OscPacket::Bundle(OscBundle {
+            timetag: {
+                OscTime::from((secs, frac))
+            },
+            content: vec![
+                OscPacket::Message(OscMessage {
+                    addr: OSC_ADDR_RMS.to_string(),
+                    args: vec![OscType::Float(rms)],
+                }),
+                OscPacket::Message(OscMessage {
+                    addr: OSC_ADDR_LOWRANGERMS.to_string(),
+                    args: vec![OscType::Float(low_range_rms)],
+                }),
+                OscPacket::Message(OscMessage {
+                    addr: OSC_ADDR_MIDRANGERMS.to_string(),
+                    args: vec![OscType::Float(mid_range_rms)],
+                }),
+                OscPacket::Message(OscMessage {
+                    addr: OSC_ADDR_HIGHRANGERMS.to_string(),
+                    args: vec![OscType::Float(high_range_rms)],
+                }),
+                OscPacket::Message(OscMessage {
+                    addr: OSC_ADDR_ZCR.to_string(),
+                    args: vec![OscType::Float(zcr)],
+                }),
+                OscPacket::Message(OscMessage {
+                    addr: OSC_ADDR_SPECTRALCENTROID.to_string(),
+                    args: vec![OscType::Float(spectral_centroid)],
+                }),
+                OscPacket::Message(OscMessage {
+                    addr: OSC_ADDR_FLUX.to_string(),
+                    args: vec![OscType::Float(flux)],
+                })
+            ],
+        })
+    )
 }
