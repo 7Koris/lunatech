@@ -1,6 +1,6 @@
 use core::f32;
 use std::ops::{ Range, RangeInclusive };
-use lt_utilities::audio_features::{ AudioFeatures, Features };
+use lt_utilities::features;
 use realfft::{ num_complex::Complex32, RealFftPlanner };
 
 const BASS_RANGE: RangeInclusive<f32> = 0.0..=250.0; // Hz
@@ -15,7 +15,7 @@ pub struct Analyzer {
     sample_rate: u32,
     last_frame_buffer: Vec<Vec<f32>>,
     //oss_envelope: Vec<f32>,
-    pub audio_features: AudioFeatures,
+    pub audio_features: features::AtomicFeatures,
 }
 
 impl Analyzer {
@@ -30,7 +30,7 @@ impl Analyzer {
             sample_rate,
             last_frame_buffer: vec![Vec::new(); channel_count as usize],
             // oss_envelope: vec![0.0; FLUX_BUFF_SIZE],
-            audio_features: AudioFeatures::default(),
+            audio_features: features::AtomicFeatures::default(),
         }
     }
 
@@ -52,12 +52,12 @@ impl Analyzer {
         }
 
         let channel_features = {
-            let result: Vec<Option<Features>> = channels
+            let result: Vec<Option<features::Features>> = channels
                 .iter()
                 .enumerate()
                 .map(|(channel_index, channel_data)| {
                     // TODO: gain slider
-                    let gain = 1.0;
+                    let gain = 1.;
                     let channel_data = &channel_data
                         .iter()
                         .map(|x| x * gain)
@@ -104,11 +104,11 @@ impl Analyzer {
                     let zcr = compute_zcr(channel_data);
 
                     // spectral centroid
-                    let spectral_centroid = compute_spectral_centroid(
+                    let centroid = compute_spectral_centroid(
                         magnitude_spectrum.as_slice(),
                         freqs.as_slice()
                     );
-                    let spectral_centroid = 1.0 * (spectral_centroid / freqs[freqs.len() - 1]);
+                    let centroid = 1.0 * (centroid / freqs[freqs.len() - 1]);
 
                     // Spectral rolloff
                     let rolloff: f32 = compute_rolloff(
@@ -148,28 +148,28 @@ impl Analyzer {
 
                     let flux = ((flux - min_flux) / (max_flux - min_flux)).clamp(0.0, 1.0);
 
-                    Some((
-                        compute_rms(&power_spectrum, power_spectrum.len() as f32),
-                        compute_rms(&bass_power_spectrum, power_spectrum.len() as f32),
-                        compute_rms(&mid_power_spectrum, power_spectrum.len() as f32),
-                        compute_rms(&treble_power_spectrum, power_spectrum.len() as f32),
+                    Some(features::Features {
+                        rms: compute_rms(&power_spectrum, power_spectrum.len() as f32),
+                        bass: compute_rms(&bass_power_spectrum, power_spectrum.len() as f32),
+                        mid: compute_rms(&mid_power_spectrum, power_spectrum.len() as f32),
+                        treble: compute_rms(&treble_power_spectrum, power_spectrum.len() as f32),
                         zcr,
-                        spectral_centroid,
+                        centroid,
                         flux,
                         rolloff,
                         tv,
-                    ))
+                    })
                 })
                 .collect();
             result
         };
 
-        let channel_features: Vec<Features> = channel_features.into_iter().flatten().collect();
+        let channel_features: Vec<features::Features> = channel_features.into_iter().flatten().collect();
         self.audio_features.rms.set(
             (
                 channel_features
                     .iter()
-                    .map(|x| x.0)
+                    .map(|x| x.rms)
                     .sum::<f32>() / (self.channel_count as f32)
             ).clamp(0.0, 1.0)
         );
@@ -177,7 +177,7 @@ impl Analyzer {
             (
                 channel_features
                     .iter()
-                    .map(|x| x.1)
+                    .map(|x| x.bass)
                     .sum::<f32>() / (self.channel_count as f32)
             ).clamp(0.0, 1.0)
         );
@@ -185,7 +185,7 @@ impl Analyzer {
             (
                 channel_features
                     .iter()
-                    .map(|x| x.2)
+                    .map(|x| x.mid)
                     .sum::<f32>() / (self.channel_count as f32)
             ).clamp(0.0, 1.0)
         );
@@ -193,7 +193,7 @@ impl Analyzer {
             (
                 channel_features
                     .iter()
-                    .map(|x| x.3)
+                    .map(|x| x.treble)
                     .sum::<f32>() / (self.channel_count as f32)
             ).clamp(0.0, 1.0)
         );
@@ -201,7 +201,7 @@ impl Analyzer {
             (
                 channel_features
                     .iter()
-                    .map(|x| x.5)
+                    .map(|x| x.centroid)
                     .sum::<f32>() / (self.channel_count as f32)
             ).clamp(0.0, 1.0)
         );
@@ -209,7 +209,7 @@ impl Analyzer {
             (
                 channel_features
                     .iter()
-                    .map(|x| x.4)
+                    .map(|x| x.zcr)
                     .sum::<f32>() / (self.channel_count as f32)
             ).clamp(0.0, 1.0)
         );
@@ -217,7 +217,7 @@ impl Analyzer {
             (
                 channel_features
                     .iter()
-                    .map(|x| x.6)
+                    .map(|x| x.flux)
                     .sum::<f32>() / (self.channel_count as f32)
             ).clamp(0.0, 1.0)
         );
@@ -225,7 +225,7 @@ impl Analyzer {
             (
                 channel_features
                     .iter()
-                    .map(|x| x.7)
+                    .map(|x| x.rolloff)
                     .sum::<f32>() / (self.channel_count as f32)
             ).clamp(0.0, 1.0)
         );
@@ -233,7 +233,7 @@ impl Analyzer {
             (
                 channel_features
                     .iter()
-                    .map(|x| x.8)
+                    .map(|x| x.tv)
                     .sum::<f32>() / (self.channel_count as f32)
             ).clamp(0.0, 1.0)
         );

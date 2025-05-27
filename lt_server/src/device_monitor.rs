@@ -5,7 +5,7 @@ use cpal::{ traits::{ DeviceTrait, StreamTrait }, SampleRate, StreamConfig };
 
 use crate::analyzer::Analyzer;
 
-use lt_utilities::audio_features::Features;
+use lt_utilities::features;
 
 #[derive(Default)]
 pub struct DeviceMonitor {
@@ -14,7 +14,7 @@ pub struct DeviceMonitor {
     device_name: Option<String>,
     /// The data stream of the device
     stream: Option<cpal::Stream>,
-    tx: Option<Arc<Sender<Features>>>,
+    tx: Option<Arc<Sender<features::Features>>>,
     // TODO: Ensure Proper error passing
     error_msg: Option<String>,
 }
@@ -31,7 +31,7 @@ impl DeviceMonitor {
         }
     }
 
-    pub fn set_thread_sender(&mut self, tx: crossbeam::channel::Sender<Features>) {
+    pub fn set_thread_sender(&mut self, tx: crossbeam::channel::Sender<features::Features>) {
         self.tx = Some(tx.into());
     }
 
@@ -104,16 +104,19 @@ impl DeviceMonitor {
             analyzer.feed_data(sample_data);
             let tx = shared_sender.clone();
             let _ = tx.send((
-                analyzer.audio_features.rms.get(),
-                analyzer.audio_features.bass.get(),
-                analyzer.audio_features.mid.get(),
-                analyzer.audio_features.treble.get(),
-                analyzer.audio_features.zcr.get(),
-                analyzer.audio_features.centroid.get(),
-                analyzer.audio_features.flux.get(),
-                analyzer.audio_features.rolloff.get(),
-                analyzer.audio_features.tv.get(),
-            ));
+                features::Features {
+                    rms: analyzer.audio_features.rms.get(),
+                    bass: analyzer.audio_features.bass.get(),
+                    mid: analyzer.audio_features.mid.get(),
+                    treble: analyzer.audio_features.treble.get(),
+                    zcr: analyzer.audio_features.zcr.get(),
+                    centroid: analyzer.audio_features.centroid.get(),
+                    flux: analyzer.audio_features.flux.get(),
+                    rolloff: analyzer.audio_features.rolloff.get(),
+                    tv: analyzer.audio_features.tv.get(),
+                }
+            )
+        );
         };
 
         let error_callback = move |e: cpal::StreamError| {
