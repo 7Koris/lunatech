@@ -2,30 +2,19 @@ use std::{
     net::{ Ipv4Addr, SocketAddr },
     sync::{ Arc, Mutex },
     thread,
-    time::{ Duration, Instant, UNIX_EPOCH },
+    time::{ Duration, UNIX_EPOCH },
 };
 use colored::Colorize;
 use rosc::{ encoder, OscBundle, OscError, OscMessage, OscPacket, OscTime, OscType };
 use socket2::{ Domain, Protocol, SockAddr, Socket, Type };
 use crossbeam::channel::Receiver;
 
-use lt_utilities::audio_features::{
-    Features,
-    OSC_ADDR_BASS,
-    OSC_ADDR_CENTROID,
-    OSC_ADDR_FLUX,
-    OSC_ADDR_MID,
-    OSC_ADDR_RMS,
-    OSC_ADDR_ROLLOFF,
-    OSC_ADDR_TREBLE,
-    OSC_ADDR_TV,
-    OSC_ADDR_ZCR,
-};
+use lt_utilities::features;
 
 pub struct LunaTechServer {
     socket: Arc<Socket>,
     addrs: SockAddr,
-    rx: Option<Arc<Receiver<Features>>>,
+    rx: Option<Arc<Receiver<features::Features>>>,
     thread_terminator: Arc<Mutex<bool>>,
 }
 
@@ -62,7 +51,7 @@ impl LunaTechServer {
         });
     }
 
-    pub fn set_thread_receiver(&mut self, rx: Receiver<Features>) {
+    pub fn set_thread_receiver(&mut self, rx: Receiver<features::Features>) {
         self.rx = Some(rx.into());
     }
 
@@ -86,11 +75,11 @@ impl LunaTechServer {
         // self.start_heartbeat_thread();
         let thread_terminator_ref = self.thread_terminator.clone();
         let rx = receiver.clone();
-        let time = Instant::now();
+
         thread::spawn(move || {
             let start_time: std::time::Instant = std::time::Instant::now();
             let epoch_start: Duration = UNIX_EPOCH.elapsed().unwrap_or(Duration::from_secs(0));
-            let mut audio_features: Result<Features, crossbeam::channel::RecvError>;
+            let mut audio_features: Result<features::Features, crossbeam::channel::RecvError>;
             loop {
                 // TODO: handle unwraps better?
                 if *thread_terminator_ref.lock().unwrap() {
@@ -119,19 +108,7 @@ impl LunaTechServer {
     }
 }
 
-fn features_to_osc(features: Features, secs: u32, frac: u32) -> Result<Vec<u8>, OscError> {
-    let (
-        rms,
-        low_range_rms,
-        mid_range_rms,
-        high_range_rms,
-        zcr,
-        spectral_centroid,
-        flux,
-        rolloff,
-        tv,
-    ) = features;
-
+fn features_to_osc(features: features::Features, secs: u32, frac: u32) -> Result<Vec<u8>, OscError> {
     encoder::encode(
         &OscPacket::Bundle(OscBundle {
             timetag: {
@@ -139,40 +116,40 @@ fn features_to_osc(features: Features, secs: u32, frac: u32) -> Result<Vec<u8>, 
             },
             content: vec![
                 OscPacket::Message(OscMessage {
-                    addr: OSC_ADDR_RMS.to_string(),
-                    args: vec![OscType::Float(rms)],
+                    addr: features::OSC_ADDR_RMS.to_string(),
+                    args: vec![OscType::Float(features.rms)],
                 }),
                 OscPacket::Message(OscMessage {
-                    addr: OSC_ADDR_BASS.to_string(),
-                    args: vec![OscType::Float(low_range_rms)],
+                    addr: features::OSC_ADDR_BASS.to_string(),
+                    args: vec![OscType::Float(features.bass)],
                 }),
                 OscPacket::Message(OscMessage {
-                    addr: OSC_ADDR_MID.to_string(),
-                    args: vec![OscType::Float(mid_range_rms)],
+                    addr: features::OSC_ADDR_MID.to_string(),
+                    args: vec![OscType::Float(features.mid)],
                 }),
                 OscPacket::Message(OscMessage {
-                    addr: OSC_ADDR_TREBLE.to_string(),
-                    args: vec![OscType::Float(high_range_rms)],
+                    addr: features::OSC_ADDR_TREBLE.to_string(),
+                    args: vec![OscType::Float(features.treble)],
                 }),
                 OscPacket::Message(OscMessage {
-                    addr: OSC_ADDR_ZCR.to_string(), // TODO: Rename to ZCR
-                    args: vec![OscType::Float(zcr)],
+                    addr: features::OSC_ADDR_ZCR.to_string(),
+                    args: vec![OscType::Float(features.zcr)],
                 }),
                 OscPacket::Message(OscMessage {
-                    addr: OSC_ADDR_CENTROID.to_string(),
-                    args: vec![OscType::Float(spectral_centroid)],
+                    addr: features::OSC_ADDR_CENTROID.to_string(),
+                    args: vec![OscType::Float(features.centroid)],
                 }),
                 OscPacket::Message(OscMessage {
-                    addr: OSC_ADDR_FLUX.to_string(),
-                    args: vec![OscType::Float(flux)],
+                    addr: features::OSC_ADDR_FLUX.to_string(),
+                    args: vec![OscType::Float(features.flux)],
                 }),
                 OscPacket::Message(OscMessage {
-                    addr: OSC_ADDR_ROLLOFF.to_string(),
-                    args: vec![OscType::Float(rolloff)],
+                    addr: features::OSC_ADDR_ROLLOFF.to_string(),
+                    args: vec![OscType::Float(features.rolloff)],
                 }),
                 OscPacket::Message(OscMessage {
-                    addr: OSC_ADDR_TV.to_string(),
-                    args: vec![OscType::Float(tv)],
+                    addr: features::OSC_ADDR_TV.to_string(),
+                    args: vec![OscType::Float(features.tv)],
                 })
             ],
         })

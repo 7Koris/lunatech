@@ -2,24 +2,13 @@ use std::mem::{ self, MaybeUninit };
 use std::net::{ Ipv4Addr, SocketAddrV4 };
 use std::sync::Arc;
 use std::thread;
-use lt_utilities::audio_features::{
-    AudioFeatures,
-    OSC_ADDR_BASS,
-    OSC_ADDR_FLUX,
-    OSC_ADDR_MID,
-    OSC_ADDR_RMS,
-    OSC_ADDR_CENTROID,
-    OSC_ADDR_TREBLE,
-    OSC_ADDR_ZCR,
-    OSC_ADDR_ROLLOFF,
-    OSC_ADDR_TV,
-};
+use lt_utilities::features;
 use rosc::OscPacket;
 use socket2::{ Domain, Protocol, SockAddr, Socket, Type };
 
 pub struct LunaTechClient {
     socket: Arc<Socket>,
-    pub audio_features: Arc<AudioFeatures>,
+    pub audio_features: Arc<features::AtomicFeatures>,
 }
 
 impl LunaTechClient {
@@ -34,7 +23,7 @@ impl LunaTechClient {
 
         let client = Self {
             socket: socket.into(),
-            audio_features: AudioFeatures::default().into(),
+            audio_features: features::AtomicFeatures::default().into(),
         };
 
         client.start_client();
@@ -71,7 +60,7 @@ impl LunaTechClient {
         });
     }
 
-    fn handle_packet(packet: OscPacket, audio_features: &AudioFeatures) {
+    fn handle_packet(packet: OscPacket, audio_features: &features::AtomicFeatures) {
         match packet {
             OscPacket::Message(_msg) => {}
             OscPacket::Bundle(bundle) => {
@@ -81,31 +70,31 @@ impl LunaTechClient {
                     if let OscPacket::Message(msg) = packet {
                         if let Some(val) = <rosc::OscType as Clone>::clone(&msg.args[0]).float() {
                             match msg.addr.as_str() {
-                                OSC_ADDR_RMS => {
+                                features::OSC_ADDR_RMS => {
                                     audio_features.rms.set(val);
                                 }
-                                OSC_ADDR_BASS => {
+                                features::OSC_ADDR_BASS => {
                                     audio_features.bass.set(val);
                                 }
-                                OSC_ADDR_MID => {
+                                features::OSC_ADDR_MID => {
                                     audio_features.mid.set(val);
                                 }
-                                OSC_ADDR_TREBLE => {
+                                features::OSC_ADDR_TREBLE => {
                                     audio_features.treble.set(val);
                                 }
-                                OSC_ADDR_ZCR => {
+                                features::OSC_ADDR_ZCR => {
                                     audio_features.zcr.set(val);
                                 }
-                                OSC_ADDR_CENTROID => {
+                                features::OSC_ADDR_CENTROID => {
                                     audio_features.centroid.set(val);
                                 }
-                                OSC_ADDR_FLUX => {
+                                features::OSC_ADDR_FLUX => {
                                     audio_features.flux.set(val);
                                 }
-                                OSC_ADDR_ROLLOFF => {
+                                features::OSC_ADDR_ROLLOFF => {
                                     audio_features.rolloff.set(val);
                                 }
-                                OSC_ADDR_TV => {
+                                features::OSC_ADDR_TV => {
                                     audio_features.tv.set(val);
                                 }
                                 _ => {}
