@@ -1,6 +1,6 @@
 use std::sync::{ Arc, Mutex };
 
-pub mod atomic_float;
+pub mod feature;
 pub mod audio_features;
 
 pub type ArcMutex<T> = Arc<Mutex<T>>;

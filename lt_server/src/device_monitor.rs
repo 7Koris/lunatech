@@ -1,7 +1,7 @@
-use std::{error::Error, sync::Arc};
+use std::{ error::Error, sync::Arc };
 use colored::Colorize;
 use crossbeam::channel::Sender;
-use cpal::{traits::{DeviceTrait, StreamTrait}, SampleRate, StreamConfig};
+use cpal::{ traits::{ DeviceTrait, StreamTrait }, SampleRate, StreamConfig };
 
 use crate::analyzer::Analyzer;
 
@@ -11,7 +11,7 @@ use lt_utilities::audio_features::Features;
 pub struct DeviceMonitor {
     sample_rate: u32,
     buffer_size: u32,
-    device_name: Option<String>, 
+    device_name: Option<String>,
     /// The data stream of the device
     stream: Option<cpal::Stream>,
     tx: Option<Arc<Sender<Features>>>,
@@ -20,9 +20,8 @@ pub struct DeviceMonitor {
 }
 
 impl DeviceMonitor {
-
     pub fn new(sample_rate: u32, buffer_size: u32) -> Self {
-        Self {   
+        Self {
             sample_rate,
             buffer_size,
             device_name: None,
@@ -41,8 +40,8 @@ impl DeviceMonitor {
             match stream.play() {
                 Ok(_) => {
                     println!("Monitoring device: {}", device_name.bold().green());
-                },
-                Err(e) => { 
+                }
+                Err(e) => {
                     println!("{}", e.to_string().bold().red());
                     panic!();
                 }
@@ -57,8 +56,8 @@ impl DeviceMonitor {
             match stream.pause() {
                 Ok(_) => {
                     println!("Stopped device: {}", device_name.bold().green());
-                },
-                Err(e) => { 
+                }
+                Err(e) => {
                     println!("Failed to stop device monitor: {}", e.to_string().bold().red());
                     panic!();
                 }
@@ -68,11 +67,12 @@ impl DeviceMonitor {
         }
     }
 
-    pub fn build_stream_from_device(&mut self, device: &cpal::Device) -> Result<(), cpal::DeviceNameError> {
+    pub fn build_stream_from_device(
+        &mut self,
+        device: &cpal::Device
+    ) -> Result<(), cpal::DeviceNameError> {
         let device_name = match device.name() {
-            Ok(name) => {
-                name
-            },
+            Ok(name) => { name }
             Err(e) => {
                 println!("Failed to get device name: {}", e.to_string().bold().red());
                 return Err(e);
@@ -84,27 +84,35 @@ impl DeviceMonitor {
         Ok(())
     }
 
-    fn try_building_stream(&self, device: &cpal::Device, config: &StreamConfig) -> Result<cpal::Stream, Box<dyn Error>>  {
+    fn try_building_stream(
+        &self,
+        device: &cpal::Device,
+        config: &StreamConfig
+    ) -> Result<cpal::Stream, Box<dyn Error>> {
         let mut analyzer = Analyzer::new(config.channels, config.sample_rate.0);
-        
+
         let sender = match &self.tx {
             Some(sender) => sender,
-            None => return Err("Sender not initialized".into()),
+            None => {
+                return Err("Sender not initialized".into());
+            }
         };
-        
+
         let shared_sender = sender.clone();
 
-        let data_callback = move |sample_data: &[f32], _: &cpal::InputCallbackInfo| {            
+        let data_callback = move |sample_data: &[f32], _: &cpal::InputCallbackInfo| {
             analyzer.feed_data(sample_data);
             let tx = shared_sender.clone();
             let _ = tx.send((
                 analyzer.audio_features.rms.get(),
-                analyzer.audio_features.low_range_rms.get(),
-                analyzer.audio_features.mid_range_rms.get(),
-                analyzer.audio_features.high_range_rms.get(),
+                analyzer.audio_features.bass.get(),
+                analyzer.audio_features.mid.get(),
+                analyzer.audio_features.treble.get(),
                 analyzer.audio_features.zcr.get(),
-                analyzer.audio_features.spectral_centroid.get(),
+                analyzer.audio_features.centroid.get(),
                 analyzer.audio_features.flux.get(),
+                analyzer.audio_features.rolloff.get(),
+                analyzer.audio_features.tv.get(),
             ));
         };
 
@@ -113,37 +121,43 @@ impl DeviceMonitor {
         };
 
         match device.build_input_stream(config, data_callback, error_callback, None) {
-            Ok(input_stream) => {
-                Ok(input_stream)
-            },
-            Err(e) => {
-                Err(Box::new(e))
-            }
+            Ok(input_stream) => { Ok(input_stream) }
+            Err(e) => { Err(Box::new(e)) }
         }
     }
 
-    fn get_built_stream(&self, device: &cpal::Device, sample_rate: u32, buffer_size: u32) -> cpal::Stream {
-        let config = &StreamConfig {
-            channels: 
-                match device.default_input_config() {
-                    Ok(config) => {
-                        println!("Using default config {}", config.channels().to_string().bold().green());
-                        config.channels()
-                    },
-                    Err(e) => {
-                        println!("{}", e.to_string().bold().red());
-                        panic!();
-                    }
-                },
-            sample_rate: SampleRate(sample_rate), 
+    fn get_built_stream(
+        &self,
+        device: &cpal::Device,
+        sample_rate: u32,
+        buffer_size: u32
+    ) -> cpal::Stream {
+        let config = &(StreamConfig {
+            channels: match device.default_input_config() {
+                Ok(config) => {
+                    println!(
+                        "Using default config {}",
+                        config.channels().to_string().bold().green()
+                    );
+                    config.channels()
+                }
+                Err(e) => {
+                    println!("{}", e.to_string().bold().red());
+                    panic!();
+                }
+            },
+            sample_rate: SampleRate(sample_rate),
             buffer_size: cpal::BufferSize::Fixed(buffer_size),
-        };
+        });
 
         match self.try_building_stream(device, config) {
             Ok(new_stream) => new_stream,
             Err(e) => {
                 println!("{}", e.to_string().bold().red());
-                println!("{}", "Main config failed, attempting to use backup config".bold().yellow());
+                println!(
+                    "{}",
+                    "Main config failed, attempting to use backup config".bold().yellow()
+                );
 
                 let config = match device.default_input_config() {
                     Ok(config) => config,
@@ -161,8 +175,3 @@ impl DeviceMonitor {
         }
     }
 }
-
-
-
-
-

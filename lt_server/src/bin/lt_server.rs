@@ -13,7 +13,7 @@ use lt_server::server;
 use lt_server::server::LunaTechServer;
 
 const DEFAULT_SAMPLE_RATE: u32 = 44100;
-const DEFAULT_BUFFER_SIZE: u32 = 1024;
+const DEFAULT_BUFFER_SIZE: u32 = 2048;
 const DEFAULT_PORT: u16 = 3000;
 
 #[derive(PartialEq)]
@@ -41,9 +41,6 @@ fn start_lt_server(
         return;
     }
 
-    // TODO: Take old lt_server object and set Arc variable to kill old threads
-    // TODO: Same for lt_device_monitor
-
     let host = cpal::default_host();
     let device = (
         if lt_server_opts.input_mode {
@@ -57,8 +54,7 @@ fn start_lt_server(
     *lt_device_monitor = Some(
         DeviceMonitor::new(lt_server_opts.sample_rate, lt_server_opts.buffer_size)
     );
-    // Todo: Check if bounded is faster
-    // Todo: Replace crossbeam channel with std
+
     let (tx, rx) = crossbeam::channel::unbounded();
 
     if let Some(lt_server) = lt_server {
