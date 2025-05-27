@@ -3,21 +3,23 @@ use std::net::{ Ipv4Addr, SocketAddrV4 };
 use std::sync::Arc;
 use std::thread;
 use lt_utilities::audio_features::{
-    AtomicAudioFeatures,
-    OSC_ADDR_RMS,
+    AudioFeatures,
+    OSC_ADDR_BASS,
     OSC_ADDR_FLUX,
-    OSC_ADDR_HIGHRANGERMS,
-    OSC_ADDR_LOWRANGERMS,
-    OSC_ADDR_MIDRANGERMS,
-    OSC_ADDR_SPECTRALCENTROID,
+    OSC_ADDR_MID,
+    OSC_ADDR_RMS,
+    OSC_ADDR_CENTROID,
+    OSC_ADDR_TREBLE,
     OSC_ADDR_ZCR,
+    OSC_ADDR_ROLLOFF,
+    OSC_ADDR_TV,
 };
 use rosc::OscPacket;
 use socket2::{ Domain, Protocol, SockAddr, Socket, Type };
 
 pub struct LunaTechClient {
     socket: Arc<Socket>,
-    pub audio_features: Arc<AtomicAudioFeatures>,
+    pub audio_features: Arc<AudioFeatures>,
 }
 
 impl LunaTechClient {
@@ -32,7 +34,7 @@ impl LunaTechClient {
 
         let client = Self {
             socket: socket.into(),
-            audio_features: AtomicAudioFeatures::default().into(),
+            audio_features: AudioFeatures::default().into(),
         };
 
         client.start_client();
@@ -69,7 +71,7 @@ impl LunaTechClient {
         });
     }
 
-    fn handle_packet(packet: OscPacket, audio_features: &AtomicAudioFeatures) {
+    fn handle_packet(packet: OscPacket, audio_features: &AudioFeatures) {
         match packet {
             OscPacket::Message(_msg) => {}
             OscPacket::Bundle(bundle) => {
@@ -82,23 +84,29 @@ impl LunaTechClient {
                                 OSC_ADDR_RMS => {
                                     audio_features.rms.set(val);
                                 }
-                                OSC_ADDR_LOWRANGERMS => {
-                                    audio_features.low_range_rms.set(val);
+                                OSC_ADDR_BASS => {
+                                    audio_features.bass.set(val);
                                 }
-                                OSC_ADDR_MIDRANGERMS => {
-                                    audio_features.mid_range_rms.set(val);
+                                OSC_ADDR_MID => {
+                                    audio_features.mid.set(val);
                                 }
-                                OSC_ADDR_HIGHRANGERMS => {
-                                    audio_features.high_range_rms.set(val);
+                                OSC_ADDR_TREBLE => {
+                                    audio_features.treble.set(val);
                                 }
                                 OSC_ADDR_ZCR => {
                                     audio_features.zcr.set(val);
                                 }
-                                OSC_ADDR_SPECTRALCENTROID => {
-                                    audio_features.spectral_centroid.set(val);
+                                OSC_ADDR_CENTROID => {
+                                    audio_features.centroid.set(val);
                                 }
                                 OSC_ADDR_FLUX => {
                                     audio_features.flux.set(val);
+                                }
+                                OSC_ADDR_ROLLOFF => {
+                                    audio_features.rolloff.set(val);
+                                }
+                                OSC_ADDR_TV => {
+                                    audio_features.tv.set(val);
                                 }
                                 _ => {}
                             }

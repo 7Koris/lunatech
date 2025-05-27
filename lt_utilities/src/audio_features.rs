@@ -1,37 +1,50 @@
 use std::sync::{ atomic::{ Ordering }, Arc };
 
-use crate::atomic_float;
+use crate::feature;
 
-atomic_float!(RMS);
-atomic_float!(LowRangeRMS);
-atomic_float!(MidRangeRMS);
-atomic_float!(HighRangeRMS);
-atomic_float!(ZCR);
-atomic_float!(SpectralCentroid);
-atomic_float!(Flux);
+// if you add a feature, you need to update the following files:
+// - server.rs (handle OSCADDR)
+// - client.rs (handle OSCADDR)
+// - analyzer.rs (send new bindings)
+// - device_monitor.rs (push new bindings to server)
+// not the best system but works for now
 
-pub type Features = (RMS, LowRangeRMS, MidRangeRMS, HighRangeRMS, ZCR, SpectralCentroid, Flux);
+feature!(RMS);
+feature!(Bass);
+feature!(Mid);
+feature!(Treble);
+feature!(ZCR);
+feature!(Centroid);
+feature!(Flux);
+feature!(RollOff);
+feature!(TV);
 
-pub struct AtomicAudioFeatures {
+pub type Features = (RMS, Bass, Mid, Treble, ZCR, Centroid, Flux, RollOff, TV);
+
+pub struct AudioFeatures {
     pub rms: Arc<RMSAtomic>,
-    pub low_range_rms: Arc<LowRangeRMSAtomic>,
-    pub mid_range_rms: Arc<MidRangeRMSAtomic>,
-    pub high_range_rms: Arc<HighRangeRMSAtomic>,
+    pub bass: Arc<BassAtomic>,
+    pub mid: Arc<MidAtomic>,
+    pub treble: Arc<TrebleAtomic>,
     pub zcr: Arc<ZCRAtomic>,
-    pub spectral_centroid: Arc<SpectralCentroidAtomic>,
+    pub centroid: Arc<CentroidAtomic>,
     pub flux: Arc<FluxAtomic>,
+    pub rolloff: Arc<RollOffAtomic>,
+    pub tv: Arc<TVAtomic>,
 }
 
-impl Default for AtomicAudioFeatures {
+impl Default for AudioFeatures {
     fn default() -> Self {
         Self {
             rms: Arc::new(RMSAtomic::new(0.0)),
-            low_range_rms: Arc::new(LowRangeRMSAtomic::new(0.0)),
-            mid_range_rms: Arc::new(MidRangeRMSAtomic::new(0.0)),
-            high_range_rms: Arc::new(HighRangeRMSAtomic::new(0.0)),
+            bass: Arc::new(BassAtomic::new(0.0)),
+            mid: Arc::new(MidAtomic::new(0.0)),
+            treble: Arc::new(TrebleAtomic::new(0.0)),
             zcr: Arc::new(ZCRAtomic::new(0.0)),
-            spectral_centroid: Arc::new(SpectralCentroidAtomic::new(0.0)),
+            centroid: Arc::new(CentroidAtomic::new(0.0)),
             flux: Arc::new(FluxAtomic::new(0.0)),
+            rolloff: Arc::new(RollOffAtomic::new(0.0)),
+            tv: Arc::new(TVAtomic::new(0.0)),
         }
     }
 }

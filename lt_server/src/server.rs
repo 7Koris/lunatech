@@ -11,12 +11,14 @@ use crossbeam::channel::Receiver;
 
 use lt_utilities::audio_features::{
     Features,
-    OSC_ADDR_RMS,
+    OSC_ADDR_BASS,
+    OSC_ADDR_CENTROID,
     OSC_ADDR_FLUX,
-    OSC_ADDR_HIGHRANGERMS,
-    OSC_ADDR_LOWRANGERMS,
-    OSC_ADDR_MIDRANGERMS,
-    OSC_ADDR_SPECTRALCENTROID,
+    OSC_ADDR_MID,
+    OSC_ADDR_RMS,
+    OSC_ADDR_ROLLOFF,
+    OSC_ADDR_TREBLE,
+    OSC_ADDR_TV,
     OSC_ADDR_ZCR,
 };
 
@@ -118,8 +120,17 @@ impl LunaTechServer {
 }
 
 fn features_to_osc(features: Features, secs: u32, frac: u32) -> Result<Vec<u8>, OscError> {
-    let (rms, low_range_rms, mid_range_rms, high_range_rms, zcr, spectral_centroid, flux) =
-        features;
+    let (
+        rms,
+        low_range_rms,
+        mid_range_rms,
+        high_range_rms,
+        zcr,
+        spectral_centroid,
+        flux,
+        rolloff,
+        tv,
+    ) = features;
 
     encoder::encode(
         &OscPacket::Bundle(OscBundle {
@@ -132,28 +143,36 @@ fn features_to_osc(features: Features, secs: u32, frac: u32) -> Result<Vec<u8>, 
                     args: vec![OscType::Float(rms)],
                 }),
                 OscPacket::Message(OscMessage {
-                    addr: OSC_ADDR_LOWRANGERMS.to_string(),
+                    addr: OSC_ADDR_BASS.to_string(),
                     args: vec![OscType::Float(low_range_rms)],
                 }),
                 OscPacket::Message(OscMessage {
-                    addr: OSC_ADDR_MIDRANGERMS.to_string(),
+                    addr: OSC_ADDR_MID.to_string(),
                     args: vec![OscType::Float(mid_range_rms)],
                 }),
                 OscPacket::Message(OscMessage {
-                    addr: OSC_ADDR_HIGHRANGERMS.to_string(),
+                    addr: OSC_ADDR_TREBLE.to_string(),
                     args: vec![OscType::Float(high_range_rms)],
                 }),
                 OscPacket::Message(OscMessage {
-                    addr: OSC_ADDR_ZCR.to_string(),
+                    addr: OSC_ADDR_ZCR.to_string(), // TODO: Rename to ZCR
                     args: vec![OscType::Float(zcr)],
                 }),
                 OscPacket::Message(OscMessage {
-                    addr: OSC_ADDR_SPECTRALCENTROID.to_string(),
+                    addr: OSC_ADDR_CENTROID.to_string(),
                     args: vec![OscType::Float(spectral_centroid)],
                 }),
                 OscPacket::Message(OscMessage {
                     addr: OSC_ADDR_FLUX.to_string(),
                     args: vec![OscType::Float(flux)],
+                }),
+                OscPacket::Message(OscMessage {
+                    addr: OSC_ADDR_ROLLOFF.to_string(),
+                    args: vec![OscType::Float(rolloff)],
+                }),
+                OscPacket::Message(OscMessage {
+                    addr: OSC_ADDR_TV.to_string(),
+                    args: vec![OscType::Float(tv)],
                 })
             ],
         })
