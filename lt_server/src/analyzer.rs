@@ -65,9 +65,10 @@ impl Analyzer {
 
                     let fft_plan = self.fft_planner.plan_fft_forward(channel_data.len());
                     let mut complex_spectrum = channel_data.iter().map(|x| Complex32::new(*x, 0.0)).collect::<Vec<Complex32>>();
-
+                    let len = complex_spectrum.len();
+                    // halve the size of the complex spectrum
                     fft_plan.process(&mut complex_spectrum);
-
+                    let (complex_spectrum, _) = complex_spectrum.split_at_mut(len / 2);
                     let bin_size = (self.sample_rate as f32) / (complex_spectrum.len() as f32);
                     let freqs = (0..complex_spectrum.len())
                         .into_iter()
@@ -76,19 +77,19 @@ impl Analyzer {
 
                     // separate channels first then calc mag spectrums separately
                     let bass_spectrum = filter_complex_by_range(
-                        &complex_spectrum.as_slice(),
+                        &complex_spectrum,
                         freqs.as_slice(),
                         BASS_RANGE
                     );
 
                     let mid_spectrum = filter_complex_by_range(
-                        &complex_spectrum.as_slice(),
+                        &complex_spectrum,
                         freqs.as_slice(),
                         MID_RANGE
                     );
 
                     let treble_spectrum = filter_complex_by_range(
-                        &complex_spectrum.as_slice(),
+                        &complex_spectrum,
                         freqs.as_slice(),
                         TREBLE_RANGE
                     );
@@ -103,8 +104,8 @@ impl Analyzer {
 
                     // spectral centroid
                     let centroid = compute_spectral_centroid(
-                        magnitude_spectrum.as_slice(),
-                        freqs.as_slice()
+                        &magnitude_spectrum.as_slice(),
+                        &freqs.as_slice()
                     );
                     let centroid = 1.0 * (centroid / freqs[freqs.len() - 1]);
 
