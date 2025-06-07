@@ -2,6 +2,7 @@ use std::{ error::Error, sync::Arc };
 use colored::Colorize;
 use crossbeam::channel::Sender;
 use cpal::{ traits::{ DeviceTrait, StreamTrait }, SampleRate, StreamConfig };
+use realfft::num_traits::Pow;
 
 use crate::analyzer::Analyzer;
 
@@ -11,6 +12,7 @@ use lt_utilities::features;
 pub struct DeviceMonitor {
     sample_rate: u32,
     buffer_size: u32,
+    linear_factor: f32,
     device_name: Option<String>,
     /// The data stream of the device
     stream: Option<cpal::Stream>,
@@ -20,10 +22,11 @@ pub struct DeviceMonitor {
 }
 
 impl DeviceMonitor {
-    pub fn new(sample_rate: u32, buffer_size: u32) -> Self {
+    pub fn new(sample_rate: u32, buffer_size: u32, gain: f32) -> Self {
         Self {
             sample_rate,
             buffer_size,
+            linear_factor: 10.0_f32.pow(gain / 20.0),
             device_name: None,
             stream: None,
             tx: None,
@@ -89,7 +92,7 @@ impl DeviceMonitor {
         device: &cpal::Device,
         config: &StreamConfig
     ) -> Result<cpal::Stream, Box<dyn Error>> {
-        let mut analyzer = Analyzer::new(config.channels, config.sample_rate.0);
+        let mut analyzer = Analyzer::new(config.channels, config.sample_rate.0, self.linear_factor);
 
         let sender = match &self.tx {
             Some(sender) => sender,
@@ -100,23 +103,20 @@ impl DeviceMonitor {
 
         let shared_sender = sender.clone();
 
-        let data_callback = move |sample_data: &[f32], _: &cpal::InputCallbackInfo| {
+        let data_callback = move |mut sample_data: &[f32], _: &cpal::InputCallbackInfo| {
             analyzer.feed_data(sample_data);
             let tx = shared_sender.clone();
-            let _ = tx.send((
-                features::Features {
-                    rms: analyzer.audio_features.rms.get(),
-                    bass: analyzer.audio_features.bass.get(),
-                    mid: analyzer.audio_features.mid.get(),
-                    treble: analyzer.audio_features.treble.get(),
-                    zcr: analyzer.audio_features.zcr.get(),
-                    centroid: analyzer.audio_features.centroid.get(),
-                    flux: analyzer.audio_features.flux.get(),
-                    rolloff: analyzer.audio_features.rolloff.get(),
-                    tv: analyzer.audio_features.tv.get(),
-                }
-            )
-        );
+            let _ = tx.send(features::Features {
+                rms: analyzer.audio_features.rms.get(),
+                bass: analyzer.audio_features.bass.get(),
+                mid: analyzer.audio_features.mid.get(),
+                treble: analyzer.audio_features.treble.get(),
+                zcr: analyzer.audio_features.zcr.get(),
+                centroid: analyzer.audio_features.centroid.get(),
+                flux: analyzer.audio_features.flux.get(),
+                rolloff: analyzer.audio_features.rolloff.get(),
+                tv: analyzer.audio_features.tv.get(),
+            });
         };
 
         let error_callback = move |e: cpal::StreamError| {

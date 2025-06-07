@@ -14,12 +14,13 @@ pub struct Analyzer {
     channel_count: u16,
     sample_rate: u32,
     last_frame_buffer: Vec<Vec<f32>>,
+    linear_factor: f32,
     //oss_envelope: Vec<f32>,
     pub audio_features: features::AtomicFeatures,
 }
 
 impl Analyzer {
-    pub fn new(channel_count: u16, sample_rate: u32) -> Self {
+    pub fn new(channel_count: u16, sample_rate: u32, linear_factor: f32) -> Self {
         if channel_count < 1 {
             panic!("Channel count must be greater than 0");
         }
@@ -29,6 +30,7 @@ impl Analyzer {
             channel_count,
             sample_rate,
             last_frame_buffer: vec![Vec::new(); channel_count as usize],
+            linear_factor: linear_factor,
             // oss_envelope: vec![0.0; FLUX_BUFF_SIZE],
             audio_features: features::AtomicFeatures::default(),
         }
@@ -56,11 +58,9 @@ impl Analyzer {
                 .iter()
                 .enumerate()
                 .map(|(channel_index, channel_data)| {
-                    // TODO: gain slider
-                    let gain = 1.;
                     let channel_data = &channel_data
                         .iter()
-                        .map(|x| x * gain)
+                        .map(|x| x * self.linear_factor)
                         .collect::<Vec<f32>>();
 
                     let fft_plan = self.fft_planner.plan_fft_forward(channel_data.len());
