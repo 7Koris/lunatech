@@ -40,6 +40,9 @@ impl Analyzer {
         assert!(self.channel_count > 0);
         assert!(data.len() % (self.channel_count as usize) == 0);
 
+        let data_len = data.len() & !1;
+        let data = &data[..data_len];
+
         let mut channels: Vec<Vec<f32>> = Vec::new();
         for _ in 0..self.channel_count {
             channels.push(Vec::new());
@@ -68,7 +71,7 @@ impl Analyzer {
                     let len = complex_spectrum.len();
                     // halve the size of the complex spectrum
                     fft_plan.process(&mut complex_spectrum);
-                    let (complex_spectrum, _) = complex_spectrum.split_at_mut(len / 2);
+                    let (complex_spectrum, _) = complex_spectrum.split_at_mut((len / 2) + 1);
                     let bin_size = (self.sample_rate as f32) / (complex_spectrum.len() as f32);
                     let freqs = (0..complex_spectrum.len())
                         .into_iter()
