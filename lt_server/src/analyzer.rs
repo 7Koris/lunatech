@@ -1,7 +1,7 @@
 use core::f32;
 use std::ops::{ Range, RangeInclusive };
 use lt_utilities::features;
-use realfft::{ num_complex::Complex32, RealFftPlanner };
+use rustfft::{ num_complex::Complex32, FftPlanner };
 
 const BASS_RANGE: RangeInclusive<f32> = 0.0..=250.0; // Hz
 const MID_RANGE: RangeInclusive<f32> = 250.0..=4000.0; // Hz
@@ -10,7 +10,7 @@ const ROLLOFF_THRESHOLD: f32 = 0.75;
 // const FLUX_BUFF_SIZE: usize = 256 * 16;
 
 pub struct Analyzer {
-    fft_planner: RealFftPlanner<f32>,
+    fft_planner: FftPlanner<f32>,
     channel_count: u16,
     sample_rate: u32,
     last_frame_buffer: Vec<Vec<f32>>,
@@ -26,7 +26,7 @@ impl Analyzer {
         }
 
         Self {
-            fft_planner: RealFftPlanner::new(),
+            fft_planner: FftPlanner::new(),
             channel_count,
             sample_rate,
             last_frame_buffer: vec![Vec::new(); channel_count as usize],
@@ -64,11 +64,9 @@ impl Analyzer {
                         .collect::<Vec<f32>>();
 
                     let fft_plan = self.fft_planner.plan_fft_forward(channel_data.len());
-                    let mut input_vec = fft_plan.make_input_vec();
-                    input_vec.copy_from_slice(channel_data.as_slice());
+                    let mut complex_spectrum = channel_data.iter().map(|x| Complex32::new(*x, 0.0)).collect::<Vec<Complex32>>();
 
-                    let mut complex_spectrum = fft_plan.make_output_vec();
-                    let _ = fft_plan.process(&mut input_vec, &mut complex_spectrum);
+                    fft_plan.process(&mut complex_spectrum);
 
                     let bin_size = (self.sample_rate as f32) / (complex_spectrum.len() as f32);
                     let freqs = (0..complex_spectrum.len())

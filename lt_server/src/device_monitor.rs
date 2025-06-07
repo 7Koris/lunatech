@@ -2,7 +2,7 @@ use std::{ error::Error, sync::Arc };
 use colored::Colorize;
 use crossbeam::channel::Sender;
 use cpal::{ traits::{ DeviceTrait, StreamTrait }, SampleRate, StreamConfig };
-use realfft::num_traits::Pow;
+use rustfft::num_traits::Pow;
 
 use crate::analyzer::Analyzer;
 
