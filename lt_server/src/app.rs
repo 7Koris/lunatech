@@ -1,10 +1,9 @@
 use colored::Colorize;
-use cpal::traits::HostTrait;
+use cpal::traits::{DeviceTrait, HostTrait};
 use egui::{ Grid, Label, RichText, Separator, Slider, Vec2 };
 
 use crate::{ device_monitor::{ self, DeviceMonitor }, server::{ self, LunaTechServer } };
 
-pub const DEFAULT_SAMPLE_RATE: u32 = 44100;
 pub const DEFAULT_BUFFER_SIZE: u32 = 2048;
 pub const DEFAULT_PORT: u16 = 3000;
 pub const DEFAULT_GAIN: f32 = 0.0;
@@ -16,7 +15,6 @@ pub enum LTServerState {
 }
 
 pub struct LTServerOpts {
-    pub sample_rate: u32,
     pub buffer_size: u32,
     pub port: u16,
     pub gain: f32,
@@ -31,7 +29,6 @@ pub struct LTServerApp {
     pub lt_device_monitor: Option<DeviceMonitor>,
     pub port_string: String,
     pub buffer_size_string: String,
-    pub sample_rate_string: String,
     pub lt_server_opts: LTServerOpts,
     pub timeout: Option<std::time::Instant>,
 }
@@ -137,23 +134,6 @@ impl eframe::App for LTServerApp {
 
                         // ui.end_row();
 
-                        // ui.label("sample rate");
-
-                        // ui.add_sized([100. ,0.], egui::TextEdit::singleline(&mut self.sample_rate_string)
-                        //     .hint_text(DEFAULT_SAMPLE_RATE.to_string())
-                        // );
-
-                        // if self.sample_rate_string.parse::<u32>().is_err() {
-                        //     ui.add(
-                        //         Label::new(
-                        //             RichText::new("Invalid sample rate").color(egui::Color32::RED)
-                        //         )
-                        //     );
-                        //     no_errors = false;
-                        // }
-
-                        // ui.end_row();
-
                         ui.label("gain (dB)");
 
                         let response = ui.add(Slider::new(&mut self.lt_server_opts.gain, -50.0..=50.0).text(""));
@@ -179,9 +159,6 @@ impl eframe::App for LTServerApp {
                         self.lt_server_opts.buffer_size = buffer_size;
                     }
 
-                    if let Ok(sample_rate) = self.sample_rate_string.parse::<u32>() {
-                        self.lt_server_opts.sample_rate = sample_rate;
-                    }
                 }
 
                 if self.lt_server_opts.lt_server_state == LTServerState::Running {
@@ -229,9 +206,12 @@ pub fn start_lt_server(
         }
     ).expect("Failed to get default device");
 
+    // print device info
+    println!("{:?}", device.name().unwrap());
+
     *lt_server = Some(LunaTechServer::new(lt_server_opts.port));
     *lt_device_monitor = Some(
-        DeviceMonitor::new(lt_server_opts.sample_rate, lt_server_opts.buffer_size, lt_server_opts.gain)
+        DeviceMonitor::new( lt_server_opts.buffer_size, lt_server_opts.gain)
     );
 
     let (tx, rx) = crossbeam::channel::unbounded();

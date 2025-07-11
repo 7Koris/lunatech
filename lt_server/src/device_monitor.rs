@@ -10,7 +10,6 @@ use lt_utilities::features;
 
 #[derive(Default)]
 pub struct DeviceMonitor {
-    sample_rate: u32,
     buffer_size: u32,
     linear_factor: f32,
     device_name: Option<String>,
@@ -22,9 +21,8 @@ pub struct DeviceMonitor {
 }
 
 impl DeviceMonitor {
-    pub fn new(sample_rate: u32, buffer_size: u32, gain: f32) -> Self {
+    pub fn new(buffer_size: u32, gain: f32) -> Self {
         Self {
-            sample_rate,
             buffer_size,
             linear_factor: 10.0_f32.pow(gain / 20.0),
             device_name: None,
@@ -82,7 +80,7 @@ impl DeviceMonitor {
             }
         };
 
-        self.stream = Some(self.get_built_stream(device, self.sample_rate, self.buffer_size));
+        self.stream = Some(self.get_built_stream(device ,self.buffer_size));
         self.device_name = Some(device_name);
         Ok(())
     }
@@ -132,7 +130,6 @@ impl DeviceMonitor {
     fn get_built_stream(
         &self,
         device: &cpal::Device,
-        sample_rate: u32,
         buffer_size: u32
     ) -> cpal::Stream {
         let config = &(StreamConfig {
@@ -149,7 +146,7 @@ impl DeviceMonitor {
                     panic!();
                 }
             },
-            sample_rate: SampleRate(sample_rate),
+            sample_rate: SampleRate(device.default_input_config().unwrap().sample_rate().0),
             buffer_size: cpal::BufferSize::Fixed(buffer_size),
         });
 

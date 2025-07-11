@@ -78,13 +78,11 @@ fn main() {
     let mut lt_server: Option<LunaTechServer> = None;
     let mut device_monitor: Option<DeviceMonitor> = None;
 
-    let default_sample_rate = matches.get_one::<u32>("sample_rate").unwrap_or(&app::DEFAULT_SAMPLE_RATE);
     let default_buffer_size = matches.get_one::<u32>("buffer_size").unwrap_or(&app::DEFAULT_BUFFER_SIZE);
     let default_port = matches.get_one::<u16>("port").unwrap_or(&app::DEFAULT_PORT);
     let default_gain = matches.get_one::<f32>("gain").unwrap_or(&app::DEFAULT_GAIN).clamp(-50.0, 50.0);
 
     let mut lt_server_opts = app::LTServerOpts {
-        sample_rate: *default_sample_rate,
         buffer_size: *default_buffer_size,
         port: *default_port,
         gain: default_gain,
@@ -122,7 +120,6 @@ fn main() {
                     lt_device_monitor: device_monitor.take(),
                     port_string: lt_server_opts.port.to_string(),
                     buffer_size_string: lt_server_opts.buffer_size.to_string(),
-                    sample_rate_string: lt_server_opts.sample_rate.to_string(),
                     lt_server_opts,
                     timeout: None,
                 })
